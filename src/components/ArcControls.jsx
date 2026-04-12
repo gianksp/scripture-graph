@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useApp } from '../store/AppContext'
 import { useRefs } from '../data/useRefs'
 import { parseUserInput } from '../data/bookMap'
+import { useApp } from '../store/AppContext'
 
 const SUGGESTIONS = [
   'John 3:16', 'Genesis 1:1', 'Psalms 23:1', 'Romans 8:28', 'Isaiah 53:5',
@@ -9,13 +9,13 @@ const SUGGESTIONS = [
 ]
 
 export default function ArcControls() {
-  const { state, setThreshold } = useApp()
   const { filteredRefs } = useRefs()
   const [query, setQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
-
+  const { state } = useApp()
+  const stats = state.dataStats
+console.log(stats)
   const count = filteredRefs.length
-  const countLabel = count > 9999 ? `${(count / 1000).toFixed(0)}k` : count.toLocaleString()
 
   function submitSearch(raw) {
     const id = parseUserInput(raw)
@@ -38,16 +38,21 @@ export default function ArcControls() {
         <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-px" style={{ background: '#7ab8f5' }} />OT→OT</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-px" style={{ background: '#7dd4a0' }} />NT→NT</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-px" style={{ background: '#d4a843' }} />OT→NT</span>
+
+        {stats && (
+          <div className="hidden md:flex items-center gap-4 text-[10px]" style={{ color: '#2a2a2a' }}>
+            <span>{stats.books} books</span>
+            <span>{stats.chapters.toLocaleString()} chapters</span>
+            <span>{stats.verses.toLocaleString()} verses</span>
+            <span>{stats.links.toLocaleString()} links</span>
+          </div>
+        )}
       </div>
+
+
+
 
       <div className="flex-1" />
-
-      <div className="hidden sm:flex items-center gap-2" style={{ color: '#333' }}>
-        <span>density</span>
-        <input type="range" min="5" max="200" value={state.threshold}
-          onChange={e => setThreshold(parseInt(e.target.value))} className="w-24" />
-        <span className="w-8" style={{ color: '#d4a843' }}>{countLabel}</span>
-      </div>
 
       <button onClick={() => window.dispatchEvent(new CustomEvent('view:reset'))}
         className="transition-colors shrink-0" style={{ color: '#333' }}

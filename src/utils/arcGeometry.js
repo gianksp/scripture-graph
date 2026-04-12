@@ -1,4 +1,5 @@
 import { project3D } from './project'
+import { BOOK_ORDER } from '../data/bookMap'
 
 export function verseToScreenPos(verseId, versePositions, chapterData, bookRanges, camera, W, H) {
     const baseId = verseId.split('-')[0]
@@ -24,22 +25,45 @@ export function verseToScreenPos(verseId, versePositions, chapterData, bookRange
 }
 
 export function computeArcEndpoints(fromId, toId, versePositions, chapterData, bookRanges, camera, W, H) {
-    const start = verseToScreenPos(fromId, versePositions, chapterData, bookRanges, camera, W, H)
-    const end = verseToScreenPos(toId, versePositions, chapterData, bookRanges, camera, W, H)
-    const baseY = camera.getBaseY(H)
-    const span = Math.abs(end.sx - start.sx)
-    const maxSpan = camera.getScale(W) * 1.8
-    const height = (span / maxSpan) * baseY * 0.75
-    const pull = 0.25
-    const peakY = start.sy - height
+    const { rotY, rotX, getScale, getOrigin, getBaseY } = camera
+    const scale = getScale(W)
+    const { ox } = getOrigin(W, H)
+    const baseY = getBaseY(H)
+
+    function getChapterWorldPos(id) {
+        const base = id.split('-')[0]
+        const book = base.split('.')[0]
+        const chapter = parseInt(base.split('.')[1]) || 1
+        const chEntry = chapterData.current[book]?.find(c => c.ch === chapter)
+        if (chEntry) return { xn: chEntry.xn, z: chEntry.z }
+        return { xn: bookRanges.current[book]?.midXn ?? 0, z: 0 }
+    }
+
+    const from = getChapterWorldPos(fromId)
+    const to = getChapterWorldPos(toId)
+    const dx = to.xn - from.xn
+    const dz = to.z - from.z
+
+    // Height determined by number of books between from and to
+    const fromBook = fromId.split('-')[0].split('.')[0]
+    const toBook = toId.split('-')[0].split('.')[0]
+    const fromIdx = BOOK_ORDER.indexOf(fromBook)
+    const toIdx = BOOK_ORDER.indexOf(toBook)
+    const bookSpan = Math.abs(toIdx - fromIdx)
+    const worldHeight = (bookSpan / (BOOK_ORDER.length - 1)) * 0.75
+
+    const s1 = project3D(from.xn, 0, from.z, rotY.current, rotX.current, scale, ox, baseY)
+    const s2 = project3D(to.xn, 0, to.z, rotY.current, rotX.current, scale, ox, baseY)
+    const cp1 = project3D(from.xn + dx * 0.25, worldHeight, from.z + dz * 0.25, rotY.current, rotX.current, scale, ox, baseY)
+    const cp2 = project3D(from.xn + dx * 0.75, worldHeight, from.z + dz * 0.75, rotY.current, rotX.current, scale, ox, baseY)
+
     return {
-        x1: start.sx, y1: start.sy,
-        x2: end.sx, y2: end.sy,
-        cp1x: start.sx + (end.sx - start.sx) * pull, cp1y: peakY,
-        cp2x: start.sx + (end.sx - start.sx) * (1 - pull), cp2y: peakY,
+        x1: s1.sx, y1: s1.sy,
+        x2: s2.sx, y2: s2.sy,
+        cp1x: cp1.sx, cp1y: cp1.sy,
+        cp2x: cp2.sx, cp2y: cp2.sy,
     }
 }
-
 export function groupRefsByChapterPair(verseRefs) {
     const map = new Map()
     verseRefs.forEach(ref => {

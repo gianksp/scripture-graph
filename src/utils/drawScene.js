@@ -22,14 +22,14 @@ function drawWorldSquare(ctx, xn, z, size, camera, W, H) {
     ctx.closePath()
 }
 
-function drawChapterArc(ctx, chArc, isHovered, isFocused, maxVotes, versePositions, chapterData, bookRanges, camera, W, H) {
+function drawChapterArc(ctx, chArc, isHovered, isFocused, maxVotes, versePositions, chapterData, bookRanges, camera, W, H, hasSel) {
     const ep = computeArcEndpoints(
         `${chArc.fromChapter}.1`, `${chArc.toChapter}.1`,
         versePositions, chapterData, bookRanges, camera, W, H
     )
     const color = arcColor(chArc.fromChapter.split('.')[0], chArc.toChapter.split('.')[0])
-    const alpha = isHovered ? 1 : isFocused ? 1 : 0.7 + (chArc.totalVotes / maxVotes) * 0.3
-    const lw = isHovered ? 3 : isFocused ? 3.5 : 0.6 + (chArc.totalVotes / maxVotes) * 2.0
+    const alpha = hasSel ? 1 : 0.05
+    const lw = 1
     ctx.beginPath()
     ctx.strokeStyle = isFocused && !isHovered ? '#fff' : color
     ctx.globalAlpha = alpha
@@ -90,7 +90,7 @@ function drawBookLabel(ctx, d, hasSelection, hoveredBook, hoveredChapterKey, W) 
     const isDimmed = hasSelection && !isSel && !isHov
     const label = book.slice(0, 3)
 
-    ctx.globalAlpha = isDimmed ? 0.2 : 1
+    ctx.globalAlpha = isDimmed ? 0.75 : 1
     ctx.font = (isSel || isHov) ? 'bold 11px IBM Plex Mono' : '10px IBM Plex Mono'
     const tw = ctx.measureText(label).width
     const tx = Math.min(Math.max(sx, 60), W - 60)
@@ -207,7 +207,8 @@ export function drawScene({
 
         const scale = getScale(canvasW)
         const { ox: ox2 } = getOrigin(canvasW, canvasH)
-        const lp = project3D(bookRanges.current[book]?.midXn || 0, 0, 0.12, rotY.current, rotX.current, scale, ox2, baseY)
+        // Book label position
+        const lp = project3D(bookRanges.current[book]?.midXn || 0, -0.027, 0, rotY.current, rotX.current, scale, ox2, baseY)
         drawables.push({ type: 'label', book, ot, isSel, sx: lp.sx, sy: lp.sy, depth: lp.depth })
         labelPositions[book] = { sx: lp.sx, sy: lp.sy }
     })
@@ -231,7 +232,7 @@ export function drawScene({
         ctx, chArc,
         isArcHovered(chArc, hoveredArc),
         isArcFocused(chArc),
-        maxV, versePositions, chapterData, bookRanges, camera, canvasW, canvasH
+        maxV, versePositions, chapterData, bookRanges, camera, canvasW, canvasH, hasSel
     ))
 
     // ── Active verse dot ──────────────────────────────────────
