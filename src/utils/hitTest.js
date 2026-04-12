@@ -1,4 +1,4 @@
-import { BOOK_ORDER } from '../../data/bookMap'
+import { BOOK_ORDER } from '../data/bookMap'
 
 const STRIP = 40
 

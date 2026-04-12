@@ -2,11 +2,82 @@ import { useEffect } from 'react'
 import { useApp } from './store/AppContext'
 import { useRefs } from './data/useRefs'
 import { useBible } from './data/useBible'
-import { verseIdToLabel, BOOK_MAP } from './data/bookMap'
-import ArcControls from './views/ArcControls'
-import ArcCanvas from './views/ArcCanvas'
-import InfoPanel from './views/InfoPanel'
+import { verseIdToLabel } from './data/bookMap'
+import ArcControls from './components/ArcControls'
+import ArcCanvas from './components/canvas/ArcCanvas'
+import InfoPanel from './components/InfoPanel'
 
+function dedupConns(conns) {
+  const map = new Map()
+  conns.forEach(c => {
+    // Normalize ranges — John.1.1-John.1.3 → John.1.1
+    const normFrom = c.from.split('-')[0]
+    const normTo = c.to.split('-')[0]
+    const key = [normFrom, normTo].sort().join('|')
+    const existing = map.get(key)
+    if (!existing || c.votes > existing.votes) map.set(key, c)
+  })
+  return [...map.values()]
+}
+function buildBookConns(book, allRefs) {
+  const raw = allRefs
+    .filter(r => r.from.split('.')[0] === book || r.to.split('.')[0] === book)
+    .map(r => {
+      const fb = r.from.split('.')[0]
+      return { from: fb === book ? r.from : r.to, to: fb === book ? r.to : r.from, votes: r.votes }
+    })
+  return dedupConns(raw).sort((a, b) => b.votes - a.votes)
+}
+
+function buildChapterConns(book, chapter, allRefs) {
+  const prefix = `${book}.${chapter}.`
+  const raw = allRefs
+    .filter(r => r.from.startsWith(prefix) || r.to.startsWith(prefix))
+    .map(r => ({
+      from: r.from.startsWith(prefix) ? r.from : r.to,
+      to: r.from.startsWith(prefix) ? r.to : r.from,
+      votes: r.votes,
+    }))
+
+  // Debug
+  const pairs = raw.filter(c =>
+    (c.from === 'John.1.1' && c.to === 'Gen.1.1') ||
+    (c.from === 'Gen.1.1' && c.to === 'John.1.1')
+  )
+  console.log('RAW pairs before dedup:', pairs)
+
+  return dedupConns(raw).sort((a, b) => b.votes - a.votes)
+}
+
+function buildVerseConns(verseId, allRefs) {
+  const raw = allRefs
+    .filter(r => r.from === verseId || r.to === verseId)
+    .map(r => ({
+      from: verseId,
+      to: r.from === verseId ? r.to : r.from,
+      votes: r.votes,
+    }))
+  return dedupConns(raw).sort((a, b) => b.votes - a.votes)
+}
+
+function buildRangeConns(fromBook, ch, v1, v2, allRefs) {
+  const raw = allRefs
+    .filter(r => {
+      const inRange = vid => {
+        const p = vid.split('.')
+        return p[0] === fromBook && parseInt(p[1]) === ch && parseInt(p[2]) >= v1 && parseInt(p[2]) <= v2
+      }
+      return inRange(r.from) || inRange(r.to)
+    })
+    .map(r => {
+      const p = r.from.split('.')
+      const fromIn = p[0] === fromBook && parseInt(p[1]) === ch
+      return { from: fromIn ? r.from : r.to, to: fromIn ? r.to : r.from, votes: r.votes }
+    })
+  return dedupConns(raw).sort((a, b) => b.votes - a.votes)
+}
+
+// ─────────────────────────────────────────────────────────────
 function Inner() {
   const { state, setVerse, clearVerse } = useApp()
   const { getConnectionsForVerse } = useRefs()
@@ -14,14 +85,15 @@ function Inner() {
 
   function handleVerseSelect(id) {
     if (!id || id.startsWith('__')) return
-    setVerse(id, getConnectionsForVerse(id), getVerse(verseIdToLabel(id)))
+    const conns = buildVerseConns(id, state.allRefs)
+    const text = getVerse(verseIdToLabel(id))
+    setVerse(id, conns, text)
   }
 
   useEffect(() => {
     function handleId(id) {
       if (!id) return
 
-      // Range: __range__Gen.1.1-Gen.1.5
       if (id.startsWith('__range__')) {
         const rangeStr = id.replace('__range__', '')
         const [fromId, toId] = rangeStr.split('-')
@@ -29,59 +101,26 @@ function Inner() {
         const ch = parseInt(fromId.split('.')[1])
         const v1 = parseInt(fromId.split('.')[2])
         const v2 = parseInt(toId.split('.')[2])
-        const conns = state.allRefs
-          .filter(r => {
-            function inRange(vid) {
-              const parts = vid.split('.')
-              return parts[0] === fromBook
-                && parseInt(parts[1]) === ch
-                && parseInt(parts[2]) >= v1
-                && parseInt(parts[2]) <= v2
-            }
-            return inRange(r.from) || inRange(r.to)
-          })
-          .map(r => {
-            const fromIn = r.from.split('.')[0] === fromBook
-              && parseInt(r.from.split('.')[1]) === ch
-            return { from: fromIn ? r.from : r.to, to: fromIn ? r.to : r.from, votes: r.votes }
-          })
-          .sort((a, b) => b.votes - a.votes).slice(0, 200)
+        const conns = buildRangeConns(fromBook, ch, v1, v2, state.allRefs)
         setVerse(`__book__${fromBook}__ch__${ch}`, conns, null)
         return
       }
 
-      // Chapter mode: __book__Gen__ch__1
       if (id.startsWith('__book__') && id.includes('__ch__')) {
-        const book = id.replace('__book__', '').split('__ch__')[0]
-        const chapter = parseInt(id.split('__ch__')[1])
-        const prefix = `${book}.${chapter}.`
-        const conns = state.allRefs
-          .filter(r => r.from.startsWith(prefix) || r.to.startsWith(prefix))
-          .map(r => ({
-            from: r.from.startsWith(prefix) ? r.from : r.to,
-            to: r.from.startsWith(prefix) ? r.to : r.from,
-            votes: r.votes,
-          }))
-          .sort((a, b) => b.votes - a.votes).slice(0, 200)
+        const bookPart = id.replace('__book__', '')
+        const [book, chStr] = bookPart.split('__ch__')
+        const conns = buildChapterConns(book, parseInt(chStr), state.allRefs)
         setVerse(id, conns, null)
         return
       }
 
-      // Book mode: __book__Gen
-      if (id.startsWith('__book__') && !id.includes('__ch__')) {
+      if (id.startsWith('__book__')) {
         const book = id.replace('__book__', '')
-        const conns = state.allRefs
-          .filter(r => r.from.split('.')[0] === book || r.to.split('.')[0] === book)
-          .map(r => {
-            const fb = r.from.split('.')[0]
-            return { from: fb === book ? r.from : r.to, to: fb === book ? r.to : r.from, votes: r.votes }
-          })
-          .sort((a, b) => b.votes - a.votes).slice(0, 200)
+        const conns = buildBookConns(book, state.allRefs)
         setVerse(id, conns, null)
         return
       }
 
-      // Regular verse
       handleVerseSelect(id)
     }
 
@@ -91,20 +130,22 @@ function Inner() {
     }
 
     function onBookSel(e) {
-      const book = e.detail
-      const conns = state.allRefs
-        .filter(r => r.from.split('.')[0] === book || r.to.split('.')[0] === book)
-        .map(r => {
-          const fb = r.from.split('.')[0]
-          return { from: fb === book ? r.from : r.to, to: fb === book ? r.to : r.from, votes: r.votes }
-        })
-        .sort((a, b) => b.votes - a.votes).slice(0, 200)
-      setVerse(`__book__${book}`, conns, null)
+      const conns = buildBookConns(e.detail, state.allRefs)
+      setVerse(`__book__${e.detail}`, conns, null)
     }
 
     function onChSel(e) {
-      const { book, chapter } = e.detail
-      handleId(`__book__${book}__ch__${chapter}`)
+      handleId(`__book__${e.detail.book}__ch__${e.detail.chapter}`)
+    }
+
+    // Moved inside — now has access to setVerse
+    function onChArcSel(e) {
+      const { chArc } = e.detail
+      const conns = chArc.versePairs
+        .map(v => ({ from: v.from, to: v.to, votes: v.votes }))
+        .sort((a, b) => b.votes - a.votes)
+      const id = `__book__${chArc.fromChapter.split('.')[0]}__ch__${chArc.fromChapter.split('.')[1]}`
+      setVerse(id, conns, null)
     }
 
     function onDesel() { clearVerse() }
@@ -113,22 +154,31 @@ function Inner() {
     window.addEventListener('book:select', onBookSel)
     window.addEventListener('book:deselect', onDesel)
     window.addEventListener('chapter:select', onChSel)
+    window.addEventListener('chaparc:select', onChArcSel)
     return () => {
       window.removeEventListener('verse:search', onSearch)
       window.removeEventListener('book:select', onBookSel)
       window.removeEventListener('book:deselect', onDesel)
       window.removeEventListener('chapter:select', onChSel)
+      window.removeEventListener('chaparc:select', onChArcSel)
     }
   }, [state.allRefs])
+
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden font-mono" style={{ background: '#080808' }}>
       <ArcControls />
-      {state.activeVerse && (
-        <InfoPanel onClose={() => { clearVerse(); window.dispatchEvent(new CustomEvent('book:deselect')) }} />
-      )}
-      <div className="flex-1 min-h-0">
+      <div style={{ flex: '0 0 60%', minHeight: 0, position: 'relative' }}>
         <ArcCanvas onVerseSelect={handleVerseSelect} />
+      </div>
+      <div
+        style={{ flex: '0 0 40%', minHeight: 0, borderTop: '1px solid #1a1a1a', overflow: 'hidden' }}
+        onContextMenu={e => e.preventDefault()}
+      >
+        <InfoPanel
+          onVerseSelect={handleVerseSelect}
+          onClose={() => { clearVerse(); window.dispatchEvent(new CustomEvent('book:deselect')) }}
+        />
       </div>
     </div>
   )

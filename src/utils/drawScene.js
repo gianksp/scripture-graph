@@ -1,0 +1,251 @@
+import { project3D } from './project'
+import { BOOK_ORDER, BOOK_MAP, isOT, arcColor, ABBREV } from '../data/bookMap'
+import { computeArcEndpoints, verseToScreenPos } from './arcGeometry'
+
+const STRIP_HEIGHT = 40
+
+function drawWorldSquare(ctx, xn, z, size, camera, W, H) {
+    const { rotY, rotX, getScale, getOrigin, getBaseY } = camera
+    const scale = getScale(W)
+    const { ox } = getOrigin(W, H)
+    const baseY = getBaseY(H)
+    const half = size / 2
+    const corners = [
+        project3D(xn - half, 0, z - half, rotY.current, rotX.current, scale, ox, baseY),
+        project3D(xn + half, 0, z - half, rotY.current, rotX.current, scale, ox, baseY),
+        project3D(xn + half, 0, z + half, rotY.current, rotX.current, scale, ox, baseY),
+        project3D(xn - half, 0, z + half, rotY.current, rotX.current, scale, ox, baseY),
+    ]
+    ctx.beginPath()
+    ctx.moveTo(corners[0].sx, corners[0].sy)
+    corners.slice(1).forEach(c => ctx.lineTo(c.sx, c.sy))
+    ctx.closePath()
+}
+
+function drawChapterArc(ctx, chArc, isHovered, isFocused, maxVotes, versePositions, chapterData, bookRanges, camera, W, H) {
+    const ep = computeArcEndpoints(
+        `${chArc.fromChapter}.1`, `${chArc.toChapter}.1`,
+        versePositions, chapterData, bookRanges, camera, W, H
+    )
+    const color = arcColor(chArc.fromChapter.split('.')[0], chArc.toChapter.split('.')[0])
+    const alpha = isHovered ? 1 : isFocused ? 1 : 0.7 + (chArc.totalVotes / maxVotes) * 0.3
+    const lw = isHovered ? 3 : isFocused ? 3.5 : 0.6 + (chArc.totalVotes / maxVotes) * 2.0
+    ctx.beginPath()
+    ctx.strokeStyle = isFocused && !isHovered ? '#fff' : color
+    ctx.globalAlpha = alpha
+    ctx.lineWidth = lw
+    ctx.moveTo(ep.x1, ep.y1)
+    ctx.bezierCurveTo(ep.cp1x, ep.cp1y, ep.cp2x, ep.cp2y, ep.x2, ep.y2)
+    ctx.stroke()
+}
+
+function isArcHovered(chArc, hoveredArc) {
+    if (!hoveredArc?.chArc) return false
+    const h = hoveredArc.chArc
+    return (h.fromChapter === chArc.fromChapter && h.toChapter === chArc.toChapter) ||
+        (h.fromChapter === chArc.toChapter && h.toChapter === chArc.fromChapter)
+}
+
+function isArcFocused(chArc) {
+    const fc = window.__focusedConn
+    if (!fc) return false
+    const fFrom = fc.from.split('.').slice(0, 2).join('.')
+    const fTo = fc.to.split('.').slice(0, 2).join('.')
+    return (fFrom === chArc.fromChapter && fTo === chArc.toChapter) ||
+        (fFrom === chArc.toChapter && fTo === chArc.fromChapter)
+}
+
+function drawChapterSquare(ctx, d, isActive, isBookHovered, isChapterHovered, camera, W, H) {
+    const { ch, xn, z, size, ot } = d
+    const color = ot ? '#7ab8f5' : '#7dd4a0'
+    ctx.globalAlpha = isActive ? 1 : isChapterHovered ? 0.9 : isBookHovered ? 0.6 : 0.5
+
+    drawWorldSquare(ctx, xn, z, size, camera, W, H)
+    ctx.fillStyle = isActive || isChapterHovered
+        ? (ot ? 'rgba(122,184,245,0.15)' : 'rgba(125,212,160,0.15)')
+        : (ot ? 'rgba(122,184,245,0.04)' : 'rgba(125,212,160,0.04)')
+    ctx.strokeStyle = isActive || isChapterHovered
+        ? (ot ? 'rgba(122,184,245,0.95)' : 'rgba(125,212,160,0.95)')
+        : isBookHovered
+            ? (ot ? 'rgba(122,184,245,0.6)' : 'rgba(125,212,160,0.6)')
+            : (ot ? 'rgba(122,184,245,0.3)' : 'rgba(125,212,160,0.3)')
+    ctx.lineWidth = isActive || isChapterHovered ? 2 : 0.5
+    ctx.fill(); ctx.stroke()
+
+    const screenSize = size * camera.getScale(W)
+    if (screenSize > 8) {
+        ctx.fillStyle = isActive || isChapterHovered ? color : (ot ? 'rgba(122,184,245,0.6)' : 'rgba(125,212,160,0.6)')
+        ctx.font = `${Math.max(7, Math.min(10, screenSize * 0.5))}px IBM Plex Mono`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(ch, d.sx, d.sy)
+        ctx.textBaseline = 'alphabetic'
+    }
+    ctx.globalAlpha = 1
+}
+
+function drawBookLabel(ctx, d, hasSelection, hoveredBook, hoveredChapterKey, W) {
+    const { book, ot, isSel, sx, sy } = d
+    const isHov = hoveredBook === book || hoveredChapterKey?.startsWith(book + '.')
+    const isDimmed = hasSelection && !isSel && !isHov
+    const label = book.slice(0, 3)
+
+    ctx.globalAlpha = isDimmed ? 0.2 : 1
+    ctx.font = (isSel || isHov) ? 'bold 11px IBM Plex Mono' : '10px IBM Plex Mono'
+    const tw = ctx.measureText(label).width
+    const tx = Math.min(Math.max(sx, 60), W - 60)
+
+    ctx.fillStyle = (isSel || isHov)
+        ? (ot ? 'rgba(122,184,245,0.15)' : 'rgba(125,212,160,0.15)')
+        : 'rgba(8,8,8,0.85)'
+    ctx.beginPath()
+    ctx.roundRect(tx - tw / 2 - 8, sy - 16, tw + 16, 22, 4)
+    ctx.fill()
+
+    ctx.strokeStyle = (isSel || isHov)
+        ? (ot ? 'rgba(122,184,245,0.5)' : 'rgba(125,212,160,0.5)')
+        : (ot ? 'rgba(122,184,245,0.2)' : 'rgba(125,212,160,0.2)')
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    const lc = (isSel || isHov)
+        ? (ot ? '#7ab8f5' : '#7dd4a0')
+        : (ot ? 'rgba(122,184,245,0.85)' : 'rgba(125,212,160,0.85)')
+    ctx.fillStyle = lc
+    ctx.textAlign = 'center'
+    ctx.fillText(label, tx, sy - 2)
+
+    ctx.beginPath()
+    ctx.strokeStyle = lc
+    ctx.globalAlpha = (isSel || isHov) ? 0.7 : 0.25
+    ctx.lineWidth = 1
+    ctx.moveTo(tx - tw / 2, sy)
+    ctx.lineTo(tx + tw / 2, sy)
+    ctx.stroke()
+    ctx.globalAlpha = 1
+}
+
+export function drawScene({
+    ctx, canvasW, canvasH, camera,
+    versePositions, bookRanges, chapterData,
+    activeVerse, connections, selectedBook,
+    hoveredBook, hoveredArc, hoveredChapterKey,
+    chapterArcs, chapterArcsSelected,
+}) {
+    const { rotY, rotX, getScale, getOrigin, getBaseY, is3D } = camera
+    const baseY = getBaseY(canvasH)
+    const scale0 = getScale(canvasW)
+    const { ox } = getOrigin(canvasW, canvasH)
+    const show3D = is3D()
+    const isChMode = activeVerse?.includes('__ch__')
+    const isBookMode = activeVerse?.startsWith('__book__') && !isChMode
+    const bookCode = activeVerse?.startsWith('__book__')
+        ? activeVerse.replace('__book__', '').replace(/__ch__.*$/, '') : null
+    const hasSel = !!(activeVerse || selectedBook)
+
+    ctx.clearRect(0, 0, canvasW, canvasH)
+
+    // ── Book bands ────────────────────────────────────────────
+    BOOK_ORDER.forEach((book, idx) => {
+        const r = bookRanges.current[book]; if (!r) return
+        const sx = ox + r.startXn * scale0
+        const ex = ox + r.endXn * scale0
+        if (idx % 2 === 0) {
+            ctx.fillStyle = isOT(book) ? 'rgba(122,184,245,0.025)' : 'rgba(125,212,160,0.025)'
+            ctx.fillRect(sx, 0, ex - sx, canvasH)
+        }
+    })
+
+    // ── Baseline ──────────────────────────────────────────────
+    ctx.beginPath(); ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 1
+    ctx.moveTo(0, baseY); ctx.lineTo(canvasW, baseY); ctx.stroke()
+
+    // ── OT/NT divider ─────────────────────────────────────────
+    const malR = bookRanges.current['Mal']
+    const mattR = bookRanges.current['Matt']
+    if (malR && mattR) {
+        const dx = (ox + malR.endXn * scale0 + ox + mattR.startXn * scale0) / 2
+        ctx.save()
+        ctx.strokeStyle = 'rgba(212,168,67,0.1)'; ctx.lineWidth = 1
+        ctx.setLineDash([3, 6])
+        ctx.beginPath(); ctx.moveTo(dx, 0); ctx.lineTo(dx, baseY); ctx.stroke()
+        ctx.setLineDash([])
+        ctx.fillStyle = 'rgba(212,168,67,0.3)'; ctx.font = '8px IBM Plex Mono'
+        ctx.textAlign = 'center'; ctx.fillText('OT·NT', dx, baseY + 26)
+        ctx.restore()
+    }
+
+    // ── Active chapter keys (from connections) ────────────────
+    const activeChKeys = new Set()
+    if (hasSel) {
+        connections.forEach(c => {
+            const add = id => {
+                const p = id.split('.')
+                if (p[0] && p[1]) activeChKeys.add(`${p[0]}.${p[1]}`)
+            }
+            add(c.from); add(c.to)
+        })
+    }
+
+    // ── Build drawables ───────────────────────────────────────
+    const drawables = []
+    const labelPositions = {}
+
+    BOOK_ORDER.forEach(book => {
+        const chapters = chapterData.current[book] || []
+        const ot = isOT(book)
+        const isSel = selectedBook === book || bookCode === book
+
+        if (show3D) {
+            chapters.forEach(ch => {
+                const scale = getScale(canvasW)
+                const { ox: ox2 } = getOrigin(canvasW, canvasH)
+                const c = project3D(ch.xn, 0, ch.z, rotY.current, rotX.current, scale, ox2, baseY)
+                drawables.push({ type: 'chapter', book, ot, isSel, ...ch, sx: c.sx, sy: c.sy, depth: c.depth })
+            })
+        }
+
+        const scale = getScale(canvasW)
+        const { ox: ox2 } = getOrigin(canvasW, canvasH)
+        const lp = project3D(bookRanges.current[book]?.midXn || 0, 0, 0.12, rotY.current, rotX.current, scale, ox2, baseY)
+        drawables.push({ type: 'label', book, ot, isSel, sx: lp.sx, sy: lp.sy, depth: lp.depth })
+        labelPositions[book] = { sx: lp.sx, sy: lp.sy }
+    })
+
+    const chapters = drawables.filter(d => d.type === 'chapter').sort((a, b) => a.depth - b.depth)
+    const labels = drawables.filter(d => d.type === 'label')
+
+    chapters.forEach(d => {
+        const isActive = activeChKeys.has(`${d.book}.${d.ch}`)
+        const isBookHov = hoveredBook === d.book
+        const isChHov = hoveredChapterKey === `${d.book}.${d.ch}`
+        drawChapterSquare(ctx, d, isActive, isBookHov, isChHov, camera, canvasW, canvasH)
+    })
+
+    labels.forEach(d => drawBookLabel(ctx, d, hasSel, hoveredBook, hoveredChapterKey, canvasW))
+
+    // ── Arcs ──────────────────────────────────────────────────
+    const arcs = hasSel ? chapterArcsSelected : chapterArcs
+    const maxV = Math.max(...arcs.map(a => a.totalVotes), 1)
+    arcs.forEach(chArc => drawChapterArc(
+        ctx, chArc,
+        isArcHovered(chArc, hoveredArc),
+        isArcFocused(chArc),
+        maxV, versePositions, chapterData, bookRanges, camera, canvasW, canvasH
+    ))
+
+    // ── Active verse dot ──────────────────────────────────────
+    if (activeVerse && !isBookMode && !isChMode) {
+        const s = verseToScreenPos(activeVerse, versePositions, chapterData, bookRanges, camera, canvasW, canvasH)
+        const ot = isOT(activeVerse.split('.')[0])
+        ctx.globalAlpha = 1
+        ctx.beginPath(); ctx.arc(s.sx, s.sy, 5, 0, Math.PI * 2)
+        ctx.fillStyle = ot ? '#7ab8f5' : '#7dd4a0'; ctx.fill()
+        ctx.beginPath(); ctx.arc(s.sx, s.sy, 9, 0, Math.PI * 2)
+        ctx.strokeStyle = ot ? 'rgba(122,184,245,0.25)' : 'rgba(125,212,160,0.25)'
+        ctx.lineWidth = 1.5; ctx.stroke()
+    }
+
+    ctx.globalAlpha = 1
+    return { labelPositions }
+}

@@ -33,90 +33,89 @@ export const NT_BOOKS = [
 ]
 export const BOOK_ORDER = [...OT_BOOKS, ...NT_BOOKS]
 export const OT_SET = new Set(OT_BOOKS)
-export const isOT = b => OT_SET.has(b)
+export const isOT = book => OT_SET.has(book)
 
+/** Maps full book name (lowercase) → book code, e.g. "genesis" → "Gen" */
 export const NAME_TO_CODE = Object.fromEntries(
-  Object.entries(BOOK_MAP).map(([k, v]) => [v.toLowerCase(), k])
+  Object.entries(BOOK_MAP).map(([code, name]) => [name.toLowerCase(), code])
 )
 
 export const COLORS = { OT_OT: '#7ab8f5', NT_NT: '#7dd4a0', OT_NT: '#d4a843' }
 
-export function arcColor(from, to) {
-  const fo = isOT(from), to2 = isOT(to)
-  if (fo && to2) return COLORS.OT_OT
-  if (!fo && !to2) return COLORS.NT_NT
+/** Returns the arc color for a cross-reference based on testament of each book */
+export function arcColor(fromBook, toBook) {
+  const fromOT = isOT(fromBook), toOT = isOT(toBook)
+  if (fromOT && toOT) return COLORS.OT_OT
+  if (!fromOT && !toOT) return COLORS.NT_NT
   return COLORS.OT_NT
 }
 
-export function verseIdToLabel(id) {
-  if (!id) return ''
-  const base = id.split('-')[0]
-  const [book, ch, v] = base.split('.')
-  return `${BOOK_MAP[book] || book} ${parseInt(ch)}:${parseInt(v)}`
+/** Converts a verse ID like "John.3.16" to a human label "John 3:16" */
+export function verseIdToLabel(verseId) {
+  if (!verseId) return ''
+  const baseId = verseId.split('-')[0]
+  const [book, chapter, verse] = baseId.split('.')
+  if (!chapter || !verse) return BOOK_MAP[book] || book
+  return `${BOOK_MAP[book] || book} ${parseInt(chapter)}:${parseInt(verse)}`
 }
 
-export function parseUserInput(raw) {
-  const clean = raw?.trim() || ''
-  if (!clean) return null
+/** Resolves a raw book name/abbreviation to a book code */
+function resolveBookCode(rawName) {
+  const lower = rawName.trim().toLowerCase()
+  if (NAME_TO_CODE[lower]) return NAME_TO_CODE[lower]
+  const byFullName = Object.entries(BOOK_MAP).find(([, name]) => name.toLowerCase().startsWith(lower))
+  if (byFullName) return byFullName[0]
+  return Object.keys(BOOK_MAP).find(code => code.toLowerCase().startsWith(lower)) || null
+}
 
-  // Already dot format e.g. John.3.16
-  if (/^[A-Za-z0-9]+\.\d+\.\d+$/.test(clean)) return clean
+/**
+ * Parses a user search string into an internal verse/book/chapter ID.
+ * Supports: "John 3:16", "Gen 1", "Genesis", "Gen 1:1-5", "John.3.16"
+ */
+export function parseUserInput(rawInput) {
+  const input = (rawInput || '').trim()
+  if (!input) return null
 
-  // Range: Gen 1:1-5 → return special range token
-  const rangeMatch = clean.match(/^(.+?)\s+(\d+):(\d+)-(\d+)$/)
+  // Already in dot format
+  if (/^[A-Za-z0-9]+\.\d+\.\d+$/.test(input)) return input
+
+  // Range: Gen 1:1-5
+  const rangeMatch = input.match(/^(.+?)\s+(\d+):(\d+)-(\d+)$/)
   if (rangeMatch) {
-    const bi = rangeMatch[1].toLowerCase()
-    const ch = rangeMatch[2]
-    const v1 = rangeMatch[3]
-    const v2 = rangeMatch[4]
-    const code = NAME_TO_CODE[bi]
-      || Object.entries(BOOK_MAP).find(([, v]) => v.toLowerCase().startsWith(bi))?.[0]
-      || Object.keys(BOOK_MAP).find(k => k.toLowerCase().startsWith(bi))
-    if (code) return `__range__${code}.${ch}.${v1}-${code}.${ch}.${v2}`
+    const code = resolveBookCode(rangeMatch[1])
+    if (code) return `__range__${code}.${rangeMatch[2]}.${rangeMatch[3]}-${code}.${rangeMatch[2]}.${rangeMatch[4]}`
   }
-
-  // Book + chapter: Gen 1
-  const chMatch = clean.match(/^(.+?)\s+(\d+)$/)
-  if (chMatch) {
-    const bi = chMatch[1].toLowerCase()
-    const ch = chMatch[2]
-    const code = NAME_TO_CODE[bi]
-      || Object.entries(BOOK_MAP).find(([, v]) => v.toLowerCase().startsWith(bi))?.[0]
-      || Object.keys(BOOK_MAP).find(k => k.toLowerCase().startsWith(bi))
-    if (code) return `__book__${code}__ch__${ch}`
-  }
-
-  // Book only: Gen
-  const bookOnly = NAME_TO_CODE[clean.toLowerCase()]
-    || Object.entries(BOOK_MAP).find(([, v]) => v.toLowerCase().startsWith(clean.toLowerCase()))?.[0]
-    || Object.keys(BOOK_MAP).find(k => k.toLowerCase().startsWith(clean.toLowerCase()))
-  if (bookOnly) return `__book__${bookOnly}`
 
   // Verse: John 3:16
-  const m = clean.match(/^(.+?)\s+(\d+):(\d+)$/)
-  if (!m) return null
-  const bi = m[1].toLowerCase()
-  if (NAME_TO_CODE[bi]) return `${NAME_TO_CODE[bi]}.${m[2]}.${m[3]}`
-  const byName = Object.entries(BOOK_MAP).find(([, v]) => v.toLowerCase().startsWith(bi))
-  if (byName) return `${byName[0]}.${m[2]}.${m[3]}`
-  const byCode = Object.keys(BOOK_MAP).find(k => k.toLowerCase().startsWith(bi))
-  if (byCode) return `${byCode}.${m[2]}.${m[3]}`
+  const verseMatch = input.match(/^(.+?)\s+(\d+):(\d+)$/)
+  if (verseMatch) {
+    const code = resolveBookCode(verseMatch[1])
+    if (code) return `${code}.${verseMatch[2]}.${verseMatch[3]}`
+  }
+
+  // Chapter: Gen 1
+  const chapterMatch = input.match(/^(.+?)\s+(\d+)$/)
+  if (chapterMatch) {
+    const code = resolveBookCode(chapterMatch[1])
+    if (code) return `__book__${code}__ch__${chapterMatch[2]}`
+  }
+
+  // Book only: Genesis
+  const bookCode = resolveBookCode(input)
+  if (bookCode) return `__book__${bookCode}`
+
   return null
 }
 
-export function chronoSort(a, b) {
-  const ai = BOOK_ORDER.indexOf(a.split('.')[0])
-  const bi = BOOK_ORDER.indexOf(b.split('.')[0])
+/** Sorts verse IDs chronologically by book order, then chapter, then verse */
+export function chronoSort(verseIdA, verseIdB) {
+  const ai = BOOK_ORDER.indexOf(verseIdA.split('.')[0])
+  const bi = BOOK_ORDER.indexOf(verseIdB.split('.')[0])
   if (ai !== bi) return ai - bi
-  const [, ac, av] = a.split('.'), [, bc, bv] = b.split('.')
+  const [, ac, av] = verseIdA.split('.')
+  const [, bc, bv] = verseIdB.split('.')
   return (parseInt(ac) * 1000 + parseInt(av)) - (parseInt(bc) * 1000 + parseInt(bv))
 }
-
-export const POPULAR = [
-  'John 3:16', 'Genesis 1:1', 'Romans 8:28', 'Psalms 23:1',
-  'Isaiah 53:5', 'Jeremiah 29:11', 'Philippians 4:13', 'Matthew 5:3',
-  'Romans 3:23', 'Hebrews 11:1', 'Revelation 21:4', 'Proverbs 3:5',
-]
 
 export const ABBREV = {
   'Gen': 'GEN', 'Exod': 'EXO', 'Lev': 'LEV', 'Num': 'NUM', 'Deut': 'DEU',

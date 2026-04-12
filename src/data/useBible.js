@@ -6,13 +6,14 @@ export function useBible() {
   const { state } = useApp()
   const { bibleLookup } = state
 
+  /** Returns verse text for a human label like "John 3:16" */
   const getVerse = useCallback(label => {
     if (!label) return ''
-    const m = label.split('-')[0].trim().match(/^(.+?)\s+(\d+):(\d+)$/)
-    if (!m) return ''
-    const code = Object.entries(BOOK_MAP).find(([,v])=>v===m[1])?.[0]
+    const match = label.split('-')[0].trim().match(/^(.+?)\s+(\d+):(\d+)$/)
+    if (!match) return ''
+    const code = Object.entries(BOOK_MAP).find(([, name]) => name === match[1])?.[0]
     if (!code) return ''
-    return bibleLookup[`${code}.${m[2]}.${m[3]}`]||''
+    return bibleLookup[`${code}.${match[2]}.${match[3]}`] || ''
   }, [bibleLookup])
 
   return { getVerse }
