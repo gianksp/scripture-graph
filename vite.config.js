@@ -5,6 +5,8 @@ import compression from 'vite-plugin-compression'
 
 export default defineConfig({
   server: {
+    host: true,  // exposes to local network
+    port: 5173,
     headers: {
       'Cache-Control': 'public, max-age=31536000',
     },

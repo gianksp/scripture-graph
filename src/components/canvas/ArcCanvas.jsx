@@ -111,6 +111,14 @@ export default function ArcCanvas() {
     }, [filteredRefs])
 
     useEffect(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const onTouchMove = e => camera.onTouchMove(e)
+        canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+        return () => canvas.removeEventListener('touchmove', onTouchMove)
+    }, [camera])
+
+    useEffect(() => {
         selChapterArcsRef.current = groupRefsByChapterPair(connections)
         cacheVerRef.current = -1
         scheduleDraw()
@@ -278,7 +286,7 @@ export default function ArcCanvas() {
                 onClick={handleClick}
                 onContextMenu={e => e.preventDefault()}
                 onTouchStart={camera.onTouchStart}
-                onTouchMove={camera.onTouchMove}
+                // onTouchMove={camera.onTouchMove}
                 onTouchEnd={camera.onTouchEnd}
             />
             <button
