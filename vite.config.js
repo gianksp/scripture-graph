@@ -2,18 +2,49 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import compression from 'vite-plugin-compression'
+import { copyFileSync, mkdirSync, existsSync } from 'fs'
+import { resolve } from 'path'
+
+function copyDataFiles() {
+  return {
+    name: 'copy-data-files',
+    closeBundle() {
+      const srcDir = resolve('public/data')
+      const destDir = resolve('dist/data')
+      const files = ['cross-references.bin', 'bible-lookup.bin']
+
+      mkdirSync(destDir, { recursive: true })
+      files.forEach(f => {
+        const src = resolve(srcDir, f)
+        const dest = resolve(destDir, f)
+        if (existsSync(src)) {
+          copyFileSync(src, dest)
+          console.log(`✓ copied ${f}`)
+        } else {
+          console.warn(`⚠ not found: ${f}`)
+        }
+      })
+    }
+  }
+}
 
 export default defineConfig({
+  publicDir: 'public',
+  base: '/',
   server: {
-    host: true,  // exposes to local network
+    host: true,
     port: 5173,
+    hmr: {
+      host: 'localhost',
+    },
     headers: {
       'Cache-Control': 'public, max-age=31536000',
     },
   },
   plugins: [
-    compression({ algorithm: 'gzip', threshold: 1024 }),
     react(),
+    compression({ algorithm: 'gzip', threshold: 1024 }),
+    copyDataFiles(),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
@@ -37,8 +68,10 @@ export default defineConfig({
         theme_color: '#080808',
         background_color: '#080808',
         display: 'standalone',
+        start_url: 'https://scripturegraph.com/',  // ← add this
+        scope: '/',                                 // ← add this
         icons: [
-          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: '/icons/logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
         ],
       },
     }),
