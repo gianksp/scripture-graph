@@ -28,8 +28,8 @@ function drawChapterArc(ctx, chArc, isHovered, isFocused, maxVotes, versePositio
         versePositions, chapterData, bookRanges, camera, W, H
     )
     const color = arcColor(chArc.fromChapter.split('.')[0], chArc.toChapter.split('.')[0])
-    const alpha = hasSel ? 1 : 0.05
-    const lw = 1
+    const alpha = 0.75
+    const lw = hasSel ? 0.75 : 0.025
     ctx.beginPath()
     ctx.strokeStyle = isFocused && !isHovered ? '#fff' : color
     ctx.globalAlpha = alpha
@@ -46,11 +46,10 @@ function isArcHovered(chArc, hoveredArc) {
         (h.fromChapter === chArc.toChapter && h.toChapter === chArc.fromChapter)
 }
 
-function isArcFocused(chArc) {
-    const fc = window.__focusedConn
-    if (!fc) return false
-    const fFrom = fc.from.split('.').slice(0, 2).join('.')
-    const fTo = fc.to.split('.').slice(0, 2).join('.')
+function isArcFocused(chArc, focusedConn) {
+    if (!focusedConn) return false
+    const fFrom = focusedConn.from.split('.').slice(0, 2).join('.')
+    const fTo = focusedConn.to.split('.').slice(0, 2).join('.')
     return (fFrom === chArc.fromChapter && fTo === chArc.toChapter) ||
         (fFrom === chArc.toChapter && fTo === chArc.fromChapter)
 }
@@ -131,6 +130,7 @@ export function drawScene({
     activeVerse, connections, selectedBook,
     hoveredBook, hoveredArc, hoveredChapterKey,
     chapterArcs, chapterArcsSelected,
+    focusedConn,           // ← add this
 }) {
     const { rotY, rotX, getScale, getOrigin, getBaseY, is3D } = camera
     const baseY = getBaseY(canvasH)
@@ -231,7 +231,7 @@ export function drawScene({
     arcs.forEach(chArc => drawChapterArc(
         ctx, chArc,
         isArcHovered(chArc, hoveredArc),
-        isArcFocused(chArc),
+        isArcFocused(chArc, focusedConn),
         maxV, versePositions, chapterData, bookRanges, camera, canvasW, canvasH, hasSel
     ))
 

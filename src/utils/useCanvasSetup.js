@@ -1,18 +1,18 @@
 import { useRef, useCallback } from 'react'
+import { useStore } from '../store/store'
 import { BOOK_ORDER } from '../data/bookMap'
 
-export function useCanvasSetup(state, scheduleDraw) {
+export function useCanvasSetup(scheduleDraw) {
   const versePositions = useRef({})
   const bookRanges = useRef({})
   const chapterData = useRef({})
   const bookStats = useRef({})
 
   const buildPositions = useCallback((W) => {
-    const lookup = state.bibleLookup
+    const lookup = useStore.getState().bibleLookup
     if (!Object.keys(lookup).length) return
 
-    const versesPerBook = {}
-    const versesPerChapter = {}
+    const versesPerBook = {}, versesPerChapter = {}
     BOOK_ORDER.forEach(b => { versesPerBook[b] = 0; versesPerChapter[b] = {} })
     Object.keys(lookup).forEach(key => {
       const [book, ch] = key.split('.')
@@ -28,10 +28,7 @@ export function useCanvasSetup(state, scheduleDraw) {
     const totalWorldW = (W - PAD * 2) / worldScale
     const worldStartX = -totalWorldW / 2
 
-    const newVersePos = {}
-    const newRanges = {}
-    const newChData = {}
-    const newStats = {}
+    const newVersePos = {}, newRanges = {}, newChData = {}, newStats = {}
 
     BOOK_ORDER.forEach((book, bi) => {
       const verseCount = versesPerBook[book] || 1
@@ -39,18 +36,11 @@ export function useCanvasSetup(state, scheduleDraw) {
       const endXn = worldStartX + ((bi + 1) / totalBooks) * totalWorldW
       const midXn = (startXn + endXn) / 2
 
-      newRanges[book] = {
-        startXn, endXn, midXn,
-        startX: W / 2 + startXn * worldScale,
-        endX: W / 2 + endXn * worldScale,
-        midX: W / 2 + midXn * worldScale,
-      }
+      newRanges[book] = { startXn, endXn, midXn }
 
       const chapters = Object.keys(versesPerChapter[book]).map(Number).sort((a, b) => a - b)
       const chSpacing = Math.max(1.4 / maxChapters, 0.035)
-      newChData[book] = chapters.map((ch, ci) => ({
-        ch, xn: midXn, z: -0.08 - ci * chSpacing, size: 0.022,
-      }))
+      newChData[book] = chapters.map((ch, ci) => ({ ch, xn: midXn, z: -0.08 - ci * chSpacing, size: 0.022 }))
       newStats[book] = { chapters: chapters.length, verses: verseCount }
 
       Object.keys(lookup)
@@ -74,20 +64,22 @@ export function useCanvasSetup(state, scheduleDraw) {
     bookRanges.current = newRanges
     chapterData.current = newChData
     bookStats.current = newStats
-  }, [state.bibleLookup])
+  }, [])
 
-  const attachResizeObserver = useCallback((canvas, container) => {
+  // onResize(W, H) lets ArcCanvas track canvas size for cache invalidation
+  const attachResizeObserver = useCallback((canvas, container, onResize) => {
     if (!canvas || !container) return () => { }
     const ro = new ResizeObserver(() => {
       const r = container.getBoundingClientRect()
-      canvas.width = Math.floor(r.width)
-      canvas.height = Math.floor(r.height)
-      buildPositions(Math.floor(r.width))
+      const W = Math.floor(r.width), H = Math.floor(r.height)
+      canvas.width = W; canvas.height = H
+      buildPositions(W)
+      onResize?.(W, H)
       scheduleDraw()
     })
     ro.observe(container)
     return () => ro.disconnect()
   }, [buildPositions, scheduleDraw])
 
-  return { versePositions, bookRanges, chapterData, bookStats, buildPositions, attachResizeObserver }
+  return { versePositions, bookRanges, chapterData, bookStats, attachResizeObserver }
 }

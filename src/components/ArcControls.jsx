@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useRefs } from '../data/useRefs'
-import { parseUserInput } from '../data/bookMap'
-import { useApp } from '../store/AppContext'
+import { useStore, selectFilteredRefs } from '../store/store'
+import { useBible } from '../data/useBible'
+import { parseUserInput, verseIdToLabel } from '../data/bookMap'
 
 const SUGGESTIONS = [
   'John 3:16', 'Genesis 1:1', 'Psalms 23:1', 'Romans 8:28', 'Isaiah 53:5',
@@ -9,17 +9,17 @@ const SUGGESTIONS = [
 ]
 
 export default function ArcControls() {
-  const { filteredRefs } = useRefs()
+  const dataStats = useStore(s => s.dataStats)
+  const resetView = useStore(s => s.resetView)
+  const selectVerse = useStore(s => s.selectVerse)
+  const { getVerse } = useBible()
   const [query, setQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const { state } = useApp()
-  const stats = state.dataStats
-console.log(stats)
-  const count = filteredRefs.length
 
   function submitSearch(raw) {
     const id = parseUserInput(raw)
-    if (id) window.dispatchEvent(new CustomEvent('verse:search', { detail: id }))
+    if (!id) return
+    selectVerse(id, getVerse, verseIdToLabel)
     setShowSuggestions(false)
     setQuery('')
   }
@@ -35,26 +35,28 @@ console.log(stats)
       <span className="tracking-widest shrink-0" style={{ color: '#d4a843' }}>BIBLE EXPLORER</span>
 
       <div className="hidden sm:flex items-center gap-4" style={{ color: '#333' }}>
-        <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-px" style={{ background: '#7ab8f5' }} />OT→OT</span>
-        <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-px" style={{ background: '#7dd4a0' }} />NT→NT</span>
-        <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-px" style={{ background: '#d4a843' }} />OT→NT</span>
-
-        {stats && (
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-px" style={{ background: '#7ab8f5' }} />OT→OT
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-px" style={{ background: '#7dd4a0' }} />NT→NT
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-px" style={{ background: '#d4a843' }} />OT→NT
+        </span>
+        {dataStats && (
           <div className="hidden md:flex items-center gap-4 text-[10px]" style={{ color: '#2a2a2a' }}>
-            <span>{stats.books} books</span>
-            <span>{stats.chapters.toLocaleString()} chapters</span>
-            <span>{stats.verses.toLocaleString()} verses</span>
-            <span>{stats.links.toLocaleString()} links</span>
+            <span>{dataStats.books} books</span>
+            <span>{dataStats.chapters.toLocaleString()} chapters</span>
+            <span>{dataStats.verses.toLocaleString()} verses</span>
+            <span>{dataStats.links.toLocaleString()} links</span>
           </div>
         )}
       </div>
 
-
-
-
       <div className="flex-1" />
 
-      <button onClick={() => window.dispatchEvent(new CustomEvent('view:reset'))}
+      <button onClick={resetView}
         className="transition-colors shrink-0" style={{ color: '#333' }}
         onMouseEnter={e => e.target.style.color = '#fff'}
         onMouseLeave={e => e.target.style.color = '#333'}
@@ -69,14 +71,14 @@ console.log(stats)
           placeholder="search verse..."
           className="font-mono text-xs px-3 py-1.5 rounded w-40 transition-colors focus:outline-none"
           style={{ background: '#0f0f0f', border: '1px solid #1e1e1e', color: '#fff' }}
-          onFocus={e => { e.target.style.borderColor = '#d4a843' }}
+          onFocus={e => e.target.style.borderColor = '#d4a843'}
         />
         {showSuggestions && suggestions.length > 0 && (
           <div className="absolute right-0 top-full mt-1 z-50 rounded overflow-hidden w-48"
             style={{ background: '#0f0f0f', border: '1px solid #1e1e1e' }}>
             {suggestions.map(s => (
               <div key={s} onMouseDown={() => submitSearch(s)}
-                className="px-3 py-2 cursor-pointer transition-colors"
+                className="px-3 py-2 cursor-pointer"
                 style={{ color: '#555' }}
                 onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = '#161616' }}
                 onMouseLeave={e => { e.currentTarget.style.color = '#555'; e.currentTarget.style.background = 'transparent' }}

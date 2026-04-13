@@ -1,18 +1,21 @@
 import { useRef, useCallback, useEffect } from 'react'
 
-export const DEFAULT_PAN_Y = () => 0
 const STRIP_HEIGHT = 40
 
-export function useCamera(scheduleDraw) {
+export function useCamera(scheduleDraw, resetSignal) {
   const rotY = useRef(0)
   const rotX = useRef(0)
   const scaleZ = useRef(1)
   const panX = useRef(0)
-  const panY = useRef(DEFAULT_PAN_Y())
+  const panY = useRef(0)
+  const version = useRef(0) // increments on every camera change
+
   const isDragging = useRef(false)
   const dragButton = useRef(0)
   const lastDragPos = useRef({ x: 0, y: 0 })
   const pinchDist = useRef(null)
+
+  const bump = useCallback(() => { version.current++ }, [])
 
   const getScale = useCallback((W) => W * 0.38 * scaleZ.current, [])
   const getOrigin = useCallback((W, H) => ({ ox: W / 2 + panX.current, oy: H / 2 + panY.current }), [])
@@ -20,20 +23,17 @@ export function useCamera(scheduleDraw) {
   const is3D = useCallback(() => rotX.current !== 0 || rotY.current !== 0, [])
 
   useEffect(() => {
-    function onReset() {
-      rotY.current = 0; rotX.current = 0; scaleZ.current = 1
-      panX.current = 0; panY.current = DEFAULT_PAN_Y()
-      scheduleDraw()
-    }
-    window.addEventListener('view:reset', onReset)
-    return () => window.removeEventListener('view:reset', onReset)
-  }, [scheduleDraw])
+    if (resetSignal === 0) return
+    rotY.current = 0; rotX.current = 0; scaleZ.current = 1
+    panX.current = 0; panY.current = 0
+    bump(); scheduleDraw()
+  }, [resetSignal])
 
   const onWheel = useCallback(e => {
     e.preventDefault()
     scaleZ.current = Math.max(0.3, Math.min(5, scaleZ.current + (e.deltaY > 0 ? -0.08 : 0.08)))
-    scheduleDraw()
-  }, [scheduleDraw])
+    bump(); scheduleDraw()
+  }, [])
 
   const onMouseDown = useCallback(e => {
     e.preventDefault()
@@ -54,19 +54,20 @@ export function useCamera(scheduleDraw) {
       panX.current += dx
       panY.current += dy
     }
-    scheduleDraw()
+    bump(); scheduleDraw()
     return true
-  }, [scheduleDraw])
+  }, [])
 
   const onMouseUp = useCallback(() => { isDragging.current = false }, [])
 
   const onTouchStart = useCallback(e => {
     if (e.touches.length === 1) {
       isDragging.current = true
-      dragButton.current = 1
+      dragButton.current = 2
       lastDragPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
     }
     if (e.touches.length === 2) {
+      isDragging.current = false
       pinchDist.current = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -83,18 +84,23 @@ export function useCamera(scheduleDraw) {
       )
       if (pinchDist.current !== null) {
         scaleZ.current = Math.max(0.3, Math.min(5, scaleZ.current + (d - pinchDist.current) * 0.006))
-        scheduleDraw()
+        bump(); scheduleDraw()
       }
       pinchDist.current = d
-    } else if (e.touches.length === 1) {
+    } else if (e.touches.length === 1 && isDragging.current) {
       const dx = e.touches[0].clientX - lastDragPos.current.x
       const dy = e.touches[0].clientY - lastDragPos.current.y
       lastDragPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-      panX.current += dx
-      panY.current += dy
-      scheduleDraw()
+      if (dragButton.current === 2) {
+        rotY.current += dx * 0.005
+        rotX.current = Math.max(-1.2, Math.min(1.2, rotX.current + dy * 0.005))
+      } else {
+        panX.current += dx
+        panY.current += dy
+      }
+      bump(); scheduleDraw()
     }
-  }, [scheduleDraw])
+  }, [])
 
   const onTouchEnd = useCallback(() => {
     isDragging.current = false
@@ -103,7 +109,7 @@ export function useCamera(scheduleDraw) {
 
   return {
     rotY, rotX, scaleZ, panX, panY,
-    isDragging, dragButton,
+    isDragging, dragButton, version,
     getScale, getOrigin, getBaseY, is3D,
     onWheel, onMouseDown, onMouseMove, onMouseUp,
     onTouchStart, onTouchMove, onTouchEnd,
