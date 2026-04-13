@@ -5,6 +5,8 @@ import compression from 'vite-plugin-compression'
 import { copyFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve } from 'path'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 function copyDataFiles() {
   return {
     name: 'copy-data-files',
@@ -75,5 +77,6 @@ export default defineConfig({
         ],
       },
     }),
+    cloudflare()
   ],
 })
