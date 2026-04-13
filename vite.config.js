@@ -29,8 +29,8 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Bible Explorer',
-        short_name: 'BibleX',
+        name: 'Scripture Graph',
+        short_name: 'Scripture Graph',
         description: '341,000 biblical cross-references visualised',
         theme_color: '#080808',
         background_color: '#080808',

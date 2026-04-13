@@ -103,7 +103,7 @@ export default function ArcCanvas() {
 
     const renderFrameRef = useRef(renderFrame)
     useEffect(() => { renderFrameRef.current = renderFrame }, [renderFrame])
-    
+
     useEffect(() => {
         allChapterArcsRef.current = groupRefsByChapterPair(filteredRefs)
         cacheVerRef.current = -1
@@ -267,7 +267,7 @@ export default function ArcCanvas() {
     }, [camera, selectedBook, selectBook, deselectBook, selectChapter, selectChArc, scheduleDraw])
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%', background: '#080808' }}>
+        <div ref={containerRef} className="relative w-full h-full bg-canvas dark:bg-canvas-dark">
             <canvas
                 ref={canvasRef}
                 style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'crosshair' }}

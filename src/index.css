@@ -1,10 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-html, body, #root { height: 100%; overflow: hidden; background: #080808; }
-* { box-sizing: border-box; }
-input[type=range] { accent-color: #d4a843; }
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+.conn-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.conn-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.conn-list::-webkit-scrollbar-thumb {
+    background: #1e1e1e;
+    border-radius: 2px;
+}

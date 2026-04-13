@@ -30,7 +30,7 @@ export default function InfoPanel() {
       : verseIdToLabel(activeVerse)
 
   const centerOT = bookCode ? isOT(bookCode) : isOT((activeVerse.split('.') || [''])[0])
-  const centerColor = centerOT ? '#7ab8f5' : '#7dd4a0'
+  const centerColor = centerOT ? 'text-ot' : 'text-nt'
   const testament = centerOT ? 'Old Testament' : 'New Testament'
   const text = centerText || (!isBookMode && !isChapterMode ? getVerse(activeVerse) : null)
 
@@ -66,37 +66,39 @@ export default function InfoPanel() {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#080808' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '12px 20px', borderBottom: '1px solid #1a1a1a', flexShrink: 0 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 15, color: centerColor, fontWeight: 500 }}>{centerLabel}</span>
-            <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, color: '#444', background: '#161616', border: '1px solid #222', borderRadius: 3, padding: '2px 6px' }}>{testament}</span>
+    <div className="h-full flex flex-col font-sans bg-panel dark:bg-panel-dark">
+
+      <div className="flex items-start gap-4 px-5 py-3 border-b border-hairline dark:border-hairline-dark shrink-0">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-lg font-medium ${centerColor}`}>{centerLabel}</span>
+            <span className="text-2xs text-tertiary dark:text-tertiary-dark bg-elevated dark:bg-elevated-dark border border-subtle dark:border-subtle-dark rounded px-1.5 py-0.5">
+              {testament}
+            </span>
           </div>
           {text && (
-            <div style={{ fontSize: 12, color: '#666', lineHeight: 1.6 }}>
+            <div className="text-base text-tertiary dark:text-tertiary-dark leading-relaxed">
               &ldquo;{text.slice(0, 180)}{text.length > 180 ? '…' : ''}&rdquo;
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexShrink: 0 }}>
+        <div className="flex gap-5 items-center shrink-0">
           <StatBadge label="total" value={unique.length} color="#d4a843" />
           <StatBadge label="OT→OT" value={otLinks} color="#7ab8f5" />
           <StatBadge label="NT→NT" value={ntLinks} color="#7dd4a0" />
           <StatBadge label="cross" value={crossLinks} color="#d4a843" />
         </div>
 
-        <button onClick={clearVerse}
-          style={{ background: 'none', border: 'none', color: '#444', fontSize: 18, cursor: 'pointer', padding: '0 4px', flexShrink: 0, lineHeight: 1 }}
-          onMouseEnter={e => e.target.style.color = '#fff'}
-          onMouseLeave={e => e.target.style.color = '#444'}
+        <button
+          onClick={clearVerse}
+          className="text-lg leading-none px-1 text-tertiary dark:text-tertiary-dark hover:text-primary dark:hover:text-primary-dark transition-colors shrink-0"
         >×</button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 16px 60px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="conn-list flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 pb-14 flex flex-col gap-2">
         {sorted.length === 0 && (
-          <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: '#333', padding: '20px 0', textAlign: 'center' }}>
+          <div className="text-sm text-placeholder dark:text-placeholder-dark py-5 text-center">
             no connections found
           </div>
         )}

@@ -11,51 +11,44 @@ export default function ConnectionCard({ connection, isSharedSource, onVerseSele
     const toLabel = verseIdToLabel(toId)
     const fromText = getVerse(fromId)
     const toText = getVerse(toId)
-
     const fromOT = isOT(fromId.split('.')[0])
     const toOT = isOT(toId.split('.')[0])
-    const fromColor = fromOT ? '#7ab8f5' : '#7dd4a0'
-    const toColor = toOT ? '#7ab8f5' : '#7dd4a0'
+    const fromColor = fromOT ? 'text-ot' : 'text-nt'
+    const toColor = toOT ? 'text-ot' : 'text-nt'
     const direction = fromOT && !toOT ? 'OT→NT' : !fromOT && toOT ? 'NT→OT' : fromOT ? 'OT→OT' : 'NT→NT'
 
     return (
         <div
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
-            style={{
-                background: isFocused ? '#111' : '#0a0a0a',
-                border: `1px solid ${isFocused ? '#2a2a2a' : '#161616'}`,
-                borderRadius: 8, padding: '12px 14px',
-                flexShrink: 0, transition: 'all 0.1s',
-            }}
+            className={`rounded-lg p-3 shrink-0 transition-all border font-sans
+        ${isFocused
+                    ? 'bg-elevated dark:bg-elevated-dark border-subtle dark:border-subtle-dark'
+                    : 'bg-panel dark:bg-panel-dark border-hairline dark:border-hairline-dark'
+                }`}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, color: '#444', background: '#161616', border: '1px solid #222', borderRadius: 3, padding: '2px 6px' }}>
+            <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-2xs text-tertiary dark:text-tertiary-dark bg-elevated dark:bg-elevated-dark border border-subtle dark:border-subtle-dark rounded px-1.5 py-0.5">
                     {direction}
                 </span>
-                <span style={{ fontFamily: 'IBM Plex Mono', fontSize: 9, color: '#333' }}>{connection.votes} votes</span>
+                <span className="text-2xs text-placeholder dark:text-placeholder-dark">
+                    {connection.votes} votes
+                </span>
             </div>
 
             {!isSharedSource && (
                 <div
                     onClick={() => onVerseSelect(fromId)}
-                    style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #161616', cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                    className="mb-2.5 pb-2.5 border-b border-hairline dark:border-hairline-dark cursor-pointer hover:opacity-70 transition-opacity"
                 >
-                    <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: fromColor, marginBottom: 4 }}>{fromLabel}</div>
-                    <div style={{ fontSize: 12, color: '#777', lineHeight: 1.6 }}>{fromText || '—'}</div>
+                    <div className={`text-sm mb-1 ${fromColor}`}>{fromLabel}</div>
+                    <div className="text-base text-secondary dark:text-secondary-dark leading-relaxed">{fromText || '—'}</div>
                 </div>
             )}
 
-            <div
-                onClick={() => onVerseSelect(toId)}
-                style={{ cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >
-                <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: toColor, marginBottom: 4 }}>{toLabel}</div>
-                <div style={{ fontSize: 12, color: '#999', lineHeight: 1.6 }}>{toText || '—'}</div>
+            <div onClick={() => onVerseSelect(toId)} className="cursor-pointer hover:opacity-70 transition-opacity">
+                <div className={`text-sm mb-1 ${toColor}`}>{toLabel}</div>
+                <div className="text-base text-tertiary dark:text-tertiary-dark leading-relaxed">{toText || '—'}</div>
             </div>
         </div>
     )

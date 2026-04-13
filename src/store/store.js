@@ -75,6 +75,7 @@ export const useStore = create((set, get) => ({
     centerText: null,
     selectedBook: null,
     focusedConn: null,  // replaces window.__focusedConn
+    theme: localStorage.getItem('theme') || 'dark',
 
     // camera reset signal — increment to trigger reset
     resetSignal: 0,
@@ -155,6 +156,14 @@ export const useStore = create((set, get) => ({
     setFocusedConn: conn => set({ focusedConn: conn }),
 
     resetView: () => set(s => ({ resetSignal: s.resetSignal + 1 })),
+
+    // action — add:
+    toggleTheme: () => {
+        const next = get().theme === 'dark' ? 'light' : 'dark'
+        document.documentElement.classList.toggle('dark', next === 'dark')
+        localStorage.setItem('theme', next)
+        set({ theme: next })
+    },
 }))
 
 // ── Selectors (plain functions, not hooks) ────────────────────────────────────

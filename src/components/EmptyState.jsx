@@ -18,20 +18,24 @@ export default function EmptyState() {
     }
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '20px 24px' }}>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#555', letterSpacing: '0.1em', marginBottom: 16 }}>
+        <div className="h-full flex flex-col p-6 font-sans bg-panel dark:bg-panel-dark">
+            <div className="text-2xs tracking-widest text-secondary dark:text-secondary-dark mb-4">
                 EXPLORE A VERSE
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+            <div className="flex flex-wrap gap-2 mb-6">
                 {POPULAR_VERSES.map(v => (
-                    <button key={v} onClick={() => searchVerse(v)}
-                        style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, padding: '6px 12px', background: '#0f0f0f', border: '1px solid #1e1e1e', borderRadius: 4, color: '#555', cursor: 'pointer', transition: 'all 0.15s' }}
-                        onMouseEnter={e => { e.target.style.color = '#d4a843'; e.target.style.borderColor = '#d4a843' }}
-                        onMouseLeave={e => { e.target.style.color = '#555'; e.target.style.borderColor = '#1e1e1e' }}
+                    <button
+                        key={v}
+                        onClick={() => searchVerse(v)}
+                        className="text-xs px-3 py-1.5 rounded transition-colors
+                       bg-surface dark:bg-surface-dark
+                       border border-hairline dark:border-hairline-dark
+                       text-secondary dark:text-secondary-dark
+                       hover:text-gold hover:border-gold"
                     >{v}</button>
                 ))}
             </div>
-            <div style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#2a2a2a', lineHeight: 2 }}>
+            <div className="text-2xs text-ghost dark:text-ghost-dark leading-loose">
                 click a book label · search a verse · right-drag to rotate
             </div>
         </div>
