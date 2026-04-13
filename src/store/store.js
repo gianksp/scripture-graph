@@ -67,6 +67,7 @@ export const useStore = create((set, get) => ({
     loaded: false,
     threshold: 5,
     dataStats: null,
+    loading: false,
 
     // selection
     activeVerse: null,
@@ -79,19 +80,15 @@ export const useStore = create((set, get) => ({
     resetSignal: 0,
 
     loadData: async () => {
-        const [refsRes, bibleRes] = await Promise.all([
-            fetch('/data/cross-references.json'),
-            fetch('/data/bible-lookup.json'),
-        ])
-        const allRefs = await refsRes.json()
-        const bibleLookup = await bibleRes.json()
-        const books = new Set(allRefs.flatMap(r => [r.from.split('.')[0], r.to.split('.')[0]])).size
-        const chapters = new Set(allRefs.flatMap(r => [
-            r.from.split('.').slice(0, 2).join('.'),
-            r.to.split('.').slice(0, 2).join('.'),
-        ])).size
-        const verses = new Set(allRefs.flatMap(r => [r.from.split('-')[0], r.to.split('-')[0]])).size
-        set({ allRefs, bibleLookup, loaded: true, dataStats: { books, chapters, verses, links: allRefs.length } })
+        if (get().loaded || get().loading) return
+        set({ loading: true })
+        const worker = new Worker('/dataWorker.js', { type: 'module' })
+        worker.postMessage(null)
+        worker.onmessage = ({ data: { refs, bible, dataStats } }) => {
+            set({ allRefs: refs, bibleLookup: bible, loaded: true, loading: false, dataStats })
+            worker.terminate()
+        }
+        worker.onerror = e => { console.error(e); set({ loading: false }) }
     },
 
     setThreshold: value => set({ threshold: value }),

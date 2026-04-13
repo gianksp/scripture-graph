@@ -1,9 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import compression from 'vite-plugin-compression'
 
 export default defineConfig({
+  server: {
+    headers: {
+      'Cache-Control': 'public, max-age=31536000',
+    },
+  },
   plugins: [
+    compression({ algorithm: 'gzip', threshold: 1024 }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -11,7 +18,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
         runtimeCaching: [
           {
-            urlPattern: /\/data\/(cross-references|bible-lookup|books|kjv)\.json$/,
+            urlPattern: /\/data\/(cross-references|bible-lookup)\.bin$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'bible-data',
