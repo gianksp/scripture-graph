@@ -32,7 +32,7 @@ export default function ArcControls() {
     <div className="flex items-center gap-4 px-5 h-12 shrink-0 font-mono text-xs"
       style={{ background: '#080808', borderBottom: '1px solid #1e1e1e' }}>
 
-      <span className="tracking-widest shrink-0" style={{ color: '#d4a843' }}>BIBLE EXPLORER</span>
+      <span className="tracking-widest shrink-0" style={{ color: '#d4a843' }}>SCRITPURE GRAPH</span>
 
       <div className="hidden sm:flex items-center gap-4" style={{ color: '#333' }}>
         <span className="flex items-center gap-1.5">

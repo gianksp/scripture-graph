@@ -27,7 +27,7 @@ export default function App() {
   if (!loaded) return (
     <div className="fixed inset-0 flex items-center justify-center font-mono" style={{ background: '#080808' }}>
       <div className="text-center">
-        <div className="text-xs tracking-widest mb-2" style={{ color: '#d4a843' }}>BIBLE EXPLORER</div>
+        <div className="text-xs tracking-widest mb-2" style={{ color: '#d4a843' }}>SCRIPTURE GRAPH</div>
         <div className="text-xs" style={{ color: '#333' }}>loading...</div>
       </div>
     </div>
