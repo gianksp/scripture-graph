@@ -12,9 +12,9 @@
 
 Scripture Graph maps every cross-reference in the Bible as an arc connecting two chapters in 3D space. Each book is laid out along a timeline — Old Testament on the left, New Testament on the right. Arcs curve upward between chapters, coloured by testament relationship:
 
-- 🟡 **Gold** — OT → NT connections
-- 🔵 **Blue** — OT → OT connections  
-- 🟢 **Green** — NT → NT connections
+- 🟡 **Gold** — Old Testament → New Testament connections
+- 🔵 **Blue** — Old Testament → Old Testament connections  
+- 🟢 **Green** — New Testament → New Testament connections
 
 The result is a living map of how the Bible references itself — prophecy fulfilled, themes echoed, ideas woven across millennia.
 
@@ -67,12 +67,11 @@ The result is a living map of how the Bible references itself — prophecy fulfi
 | Data loading | Web Worker + MessagePack binary |
 | PWA | vite-plugin-pwa + Workbox |
 | Deployment | Cloudflare Pages |
-| CI/CD | GitHub Actions |
 
 ---
 
 ## Architecture
-
+````
 src/
 ├── components/
 │   ├── canvas/
@@ -111,7 +110,7 @@ public/
 └── icons/
 ├── logo.svg                 # PWA icon (dark background)
 └── logo-transparent.svg     # Favicon
-
+````
 ---
 
 ## Performance
@@ -133,7 +132,7 @@ git clone https://github.com/gianksp/scripture-graph
 cd scripture-graph
 
 # Install
-npm install --legacy-peer-deps
+npm install
 
 # Generate binary data files (first time only)
 node scripts/convertData.js
@@ -180,6 +179,7 @@ Areas most open to contribution:
 - Additional graph types (thematic, chronological, geographic)
 - Performance improvements
 - Accessibility
+- Additional features e.g. Export as infographic
 
 ---
 
