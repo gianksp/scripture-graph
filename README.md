@@ -108,8 +108,8 @@ public/
 │   ├── cross-references.bin     # 341k refs (MessagePack)
 │   └── bible-lookup.bin         # KJV verse text (MessagePack)
 └── icons/
-├── logo.svg                 # PWA icon (dark background)
-└── logo-transparent.svg     # Favicon
+├── icon.svg                 # PWA icon (dark background)
+└── icon-transparent.svg     # Favicon
 ````
 ---
 
