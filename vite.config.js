@@ -73,7 +73,7 @@ export default defineConfig({
         start_url: 'https://scripturegraph.com/',  // ← add this
         scope: '/',                                 // ← add this
         icons: [
-          { src: '/icons/logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
     }),

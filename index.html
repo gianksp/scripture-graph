@@ -3,8 +3,17 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/icons/logo-transparent.svg" />
-  <link rel="apple-touch-icon" href="/icons/logo.svg" />
+  <!-- Standard favicon -->
+  <link rel="icon" type="image/png" href="/icons/icon-512.png" />
+
+  <!-- Android Chrome -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#080808" />
+
+  <!-- Windows tiles -->
+  <meta name="msapplication-TileImage" content="/icons/icon-512.png" />
+  <meta name="msapplication-TileColor" content="#080808" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Scripture Graph</title>
   <meta name="description" content="Visualise 341,000 biblical cross-references across all 66 books of the Bible." />
