@@ -9,7 +9,7 @@ function Inner() {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden font-sans bg-canvas dark:bg-canvas-dark">
       <Header />
-      <div className="relative" style={{ flex: '0 0 55%', minHeight: 0 }}>
+      <div className="relative" style={{ flex: '0 0 50%', minHeight: 0 }}>
         <ArcCanvas />
       </div>
       <div
