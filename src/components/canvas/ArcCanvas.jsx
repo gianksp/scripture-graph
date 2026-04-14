@@ -294,15 +294,32 @@ export default function ArcCanvas() {
                 // onTouchMove={camera.onTouchMove}
                 onTouchEnd={camera.onTouchEnd}
             />
+            {/* Navigation hint + reset — top left */}
             <button
                 onClick={() => useStore.getState().resetView()}
-                style={{ position: 'absolute', top: 12, right: 12, fontFamily: 'IBM Plex Mono', fontSize: 10, padding: '5px 10px', borderRadius: 4, background: 'rgba(8,8,8,0.8)', border: '1px solid #1e1e1e', color: '#444', cursor: 'pointer' }}
-                onMouseEnter={e => { e.target.style.color = '#d4a843'; e.target.style.borderColor = '#d4a843' }}
-                onMouseLeave={e => { e.target.style.color = '#444'; e.target.style.borderColor = '#1e1e1e' }}
-            >reset view</button>
-            <div style={{ position: 'absolute', bottom: 12, right: 12, fontFamily: 'IBM Plex Mono', fontSize: 9, textAlign: 'right', lineHeight: 1.8, color: '#2a2a2a', pointerEvents: 'none' }}>
-                middle drag · pan &nbsp;·&nbsp; right drag · rotate<br />scroll · zoom
-            </div>
+                className="absolute top-3 right-3 flex flex-col items-center gap-1 p-2.5 rounded-xl transition-colors active:opacity-90"
+                style={{ background: 'rgba(8,8,8,0.7)', border: '1px solid #2a2a2a' }}
+                title="Reset view"
+            >
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    {/* Pan arrows — horizontal */}
+                    <line x1="4" y1="16" x2="28" y2="16" stroke="#7ab8f5" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+                    <path d="M4 16L7 13M4 16L7 19" stroke="#7ab8f5" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+                    <path d="M28 16L25 13M28 16L25 19" stroke="#7ab8f5" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+
+                    {/* Pan arrows — vertical */}
+                    <line x1="16" y1="4" x2="16" y2="28" stroke="#7dd4a0" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+                    <path d="M16 4L13 7M16 4L19 7" stroke="#7dd4a0" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+                    <path d="M16 28L13 25M16 28L19 25" stroke="#7dd4a0" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+
+                    {/* Rotation arc */}
+                    <path d="M9 9 A10 10 0 0 1 23 9" stroke="#d4a843" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.8" />
+                    <path d="M23 9L21 6M23 9L26 8" stroke="#d4a843" strokeWidth="1.2" strokeLinecap="round" opacity="0.8" />
+
+                    {/* Center dot */}
+                    <circle cx="16" cy="16" r="2" fill="#d4a843" opacity="0.9" />
+                </svg>
+            </button>
             <div
                 ref={arcTipRef}
                 style={{
