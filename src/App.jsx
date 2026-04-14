@@ -9,10 +9,13 @@ function Inner() {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden font-sans bg-canvas dark:bg-canvas-dark">
       <Header />
-      <div className="relative" style={{ flex: '0 0 60%', minHeight: 0 }}>
+      <div className="relative" style={{ flex: '0 0 55%', minHeight: 0 }}>
         <ArcCanvas />
       </div>
-      <div className="overflow-hidden border-t border-hairline dark:border-hairline-dark" style={{ flex: '0 0 40%', minHeight: 0 }}>
+      <div
+        className="overflow-hidden border-t border-hairline dark:border-hairline-dark"
+        style={{ flex: '1 1 0%', minHeight: 0 }}
+      >
         <InfoPanel />
       </div>
     </div>

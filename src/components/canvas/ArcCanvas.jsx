@@ -12,9 +12,14 @@ import {
     buildArcSampleCache, hitTestArcSamples,
 } from '../../utils/geometryCache'
 
-function positionTooltip(tipEl, clientX, clientY, tipWidth = 460) {
-    tipEl.style.left = Math.min(clientX + 16, window.innerWidth - tipWidth - 8) + 'px'
-    tipEl.style.top = Math.max(clientY - 10, 60) + 'px'
+function positionTooltip(tipEl, clientX, clientY) {
+    const tipWidth = Math.min(460, window.innerWidth - 16)
+    const tipLeft = Math.min(clientX + 16, window.innerWidth - tipWidth - 8)
+    const tipTop = Math.max(clientY - 10, 60)
+    tipEl.style.left = Math.max(8, tipLeft) + 'px'
+    tipEl.style.top = tipTop + 'px'
+    tipEl.style.width = tipWidth + 'px'
+    tipEl.style.maxWidth = tipWidth + 'px'
 }
 
 export default function ArcCanvas() {
@@ -298,8 +303,19 @@ export default function ArcCanvas() {
             <div style={{ position: 'absolute', bottom: 12, right: 12, fontFamily: 'IBM Plex Mono', fontSize: 9, textAlign: 'right', lineHeight: 1.8, color: '#2a2a2a', pointerEvents: 'none' }}>
                 middle drag · pan &nbsp;·&nbsp; right drag · rotate<br />scroll · zoom
             </div>
-            <div ref={arcTipRef} style={{ position: 'fixed', zIndex: 50, pointerEvents: 'none', fontFamily: 'IBM Plex Mono', borderRadius: 10, background: '#0d0d0d', border: '1px solid #222', padding: '14px 18px', maxWidth: 460, width: 460, opacity: 0, transition: 'opacity 0.1s', boxShadow: '0 8px 32px rgba(0,0,0,0.8)' }} />
-            <div ref={bookTipRef} style={{ position: 'fixed', zIndex: 50, pointerEvents: 'none', fontFamily: 'IBM Plex Mono', borderRadius: 10, bottom: 60, left: '50%', transform: 'translateX(-50%)', background: '#0d0d0d', border: '1px solid #222', padding: '14px 20px', minWidth: 220, opacity: 0, transition: 'opacity 0.1s', boxShadow: '0 8px 32px rgba(0,0,0,0.8)' }} />
+            <div
+                ref={arcTipRef}
+                style={{
+                    position: 'fixed', zIndex: 50, pointerEvents: 'none',
+                    fontFamily: 'IBM Plex Mono', borderRadius: 10,
+                    background: '#0d0d0d', border: '1px solid #222',
+                    padding: '12px 14px',
+                    maxWidth: 'calc(100vw - 16px)',
+                    opacity: 0, transition: 'opacity 0.1s',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+                    overflowY: 'auto', maxHeight: '60vh',
+                }}
+            /><div ref={bookTipRef} style={{ position: 'fixed', zIndex: 50, pointerEvents: 'none', fontFamily: 'IBM Plex Mono', borderRadius: 10, bottom: 60, left: '50%', transform: 'translateX(-50%)', background: '#0d0d0d', border: '1px solid #222', padding: '14px 20px', minWidth: 220, opacity: 0, transition: 'opacity 0.1s', boxShadow: '0 8px 32px rgba(0,0,0,0.8)' }} />
         </div>
     )
 }
