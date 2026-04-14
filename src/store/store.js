@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { deduplicateConnections } from '../utils/arcGeometry'
-import { isOT } from '../data/bookMap'
+import { isOT, parseUserInput } from '../data/bookMap'
 
 function dedupConns(conns) {
     const map = new Map()
@@ -60,24 +60,25 @@ function buildRangeConns(fromBook, ch, v1, v2, allRefs) {
     return dedupConns(raw).sort((a, b) => b.votes - a.votes)
 }
 
+
 export const useStore = create((set, get) => ({
     // data
     allRefs: [],
     bibleLookup: {},
     loaded: false,
+    loading: false,
     threshold: 5,
     dataStats: null,
-    loading: false,
 
     // selection
     activeVerse: null,
     connections: [],
     centerText: null,
     selectedBook: null,
-    focusedConn: null,  // replaces window.__focusedConn
+    focusedConn: null,
     theme: localStorage.getItem('theme') || 'dark',
 
-    // camera reset signal — increment to trigger reset
+    // camera reset signal
     resetSignal: 0,
 
     loadData: async () => {
@@ -116,48 +117,66 @@ export const useStore = create((set, get) => ({
         set({ activeVerse: id, connections: conns, centerText: null, selectedBook: null })
     },
 
-    selectVerse: (verseId, getVerseFn, verseIdToLabelFn) => {
-        if (!verseId) return
-
-        if (verseId.startsWith('__range__')) {
-            const rangeStr = verseId.replace('__range__', '')
-            const [fromId, toId] = rangeStr.split('-')
-            const fromBook = fromId.split('.')[0]
-            const ch = parseInt(fromId.split('.')[1])
-            const v1 = parseInt(fromId.split('.')[2])
-            const v2 = parseInt(toId.split('.')[2])
-            get().selectRange(fromBook, ch, v1, v2)
-            return
-        }
-
-        if (verseId.startsWith('__book__') && verseId.includes('__ch__')) {
-            const bookPart = verseId.replace('__book__', '')
-            const [book, chStr] = bookPart.split('__ch__')
-            get().selectChapter(book, parseInt(chStr))
-            return
-        }
-
-        if (verseId.startsWith('__book__')) {
-            const book = verseId.replace('__book__', '')
-            get().selectBook(book)
-            return
-        }
-
-        const conns = buildVerseConns(verseId, get().allRefs)
-        const text = getVerseFn(verseIdToLabelFn(verseId))
-        set({ activeVerse: verseId, connections: conns, centerText: text, selectedBook: null })
-    },
 
     selectRange: (fromBook, ch, v1, v2) => {
         const conns = buildRangeConns(fromBook, ch, v1, v2, get().allRefs)
         set({ activeVerse: `__book__${fromBook}__ch__${ch}`, connections: conns, centerText: null, selectedBook: null })
     },
 
+    // Deep link — accepts human readable query like "Romans 1:1" or "John 3:16"
+    selectVerse: (verseId, getVerseFn, verseIdToLabelFn) => {
+        if (!verseId) return
+        const id = parseUserInput(verseId) || verseId
+        if (!id) return
+
+        if (id.startsWith('__range__')) {
+            const rangeStr = id.replace('__range__', '')
+            const [fromId, toId] = rangeStr.split('-')
+            get().selectRange(fromId.split('.')[0], parseInt(fromId.split('.')[1]), parseInt(fromId.split('.')[2]), parseInt(toId.split('.')[2]))
+            return
+        }
+        if (id.startsWith('__book__') && id.includes('__ch__')) {
+            const [book, chStr] = id.replace('__book__', '').split('__ch__')
+            get().selectChapter(book, parseInt(chStr))
+            return
+        }
+        if (id.startsWith('__book__')) {
+            get().selectBook(id.replace('__book__', ''))
+            return
+        }
+        const conns = buildVerseConns(id, get().allRefs)
+        const text = getVerseFn ? getVerseFn(verseIdToLabelFn(id)) : null
+        set({ activeVerse: id, connections: conns, centerText: text, selectedBook: null })
+    },
+
+    selectFromUrl: (query) => {
+        if (!query) return
+        const id = parseUserInput(decodeURIComponent(query))
+        if (!id) return
+
+        if (id.startsWith('__range__')) {
+            const rangeStr = id.replace('__range__', '')
+            const [fromId, toId] = rangeStr.split('-')
+            get().selectRange(fromId.split('.')[0], parseInt(fromId.split('.')[1]), parseInt(fromId.split('.')[2]), parseInt(toId.split('.')[2]))
+            return
+        }
+        if (id.startsWith('__book__') && id.includes('__ch__')) {
+            const [book, chStr] = id.replace('__book__', '').split('__ch__')
+            get().selectChapter(book, parseInt(chStr))
+            return
+        }
+        if (id.startsWith('__book__')) {
+            get().selectBook(id.replace('__book__', ''))
+            return
+        }
+        const conns = buildVerseConns(id, get().allRefs)
+        set({ activeVerse: id, connections: conns, centerText: null, selectedBook: null })
+    },
+
     setFocusedConn: conn => set({ focusedConn: conn }),
 
     resetView: () => set(s => ({ resetSignal: s.resetSignal + 1 })),
 
-    // action — add:
     toggleTheme: () => {
         const next = get().theme === 'dark' ? 'light' : 'dark'
         document.documentElement.classList.toggle('dark', next === 'dark')
@@ -166,8 +185,7 @@ export const useStore = create((set, get) => ({
     },
 }))
 
-// ── Selectors (plain functions, not hooks) ────────────────────────────────────
-// These memo-ise by reference so components don't rerender on unrelated changes.
+// ── Selectors ─────────────────────────────────────────────────────────────────
 
 let _allRefs = null, _threshold = null, _filtered = []
 export function selectFilteredRefs(state) {
@@ -192,7 +210,8 @@ export function selectBookLinkCounts(state) {
     _allRefs2 = state.allRefs
     const counts = {}
     state.allRefs.forEach(r => {
-        const fb = r.from.split('.')[0]; const tb = r.to.split('.')[0]
+        const fb = r.from.split('.')[0]
+        const tb = r.to.split('.')[0]
         counts[fb] = (counts[fb] || 0) + 1
         counts[tb] = (counts[tb] || 0) + 1
     })

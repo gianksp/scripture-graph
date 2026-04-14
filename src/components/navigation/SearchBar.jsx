@@ -10,23 +10,19 @@ const POPULAR = [
     'Hebrews 11:1', 'Revelation 21:4', 'John 1:1', 'Romans 3:23',
 ]
 
-// All searchable terms: verses + book names
 const BOOK_NAMES = Object.entries(BOOK_MAP).map(([id, name]) => ({ id, name }))
 
 function buildSuggestions(query) {
     if (!query || query.length < 1) return []
     const q = query.toLowerCase()
-
     const results = []
 
-    // Book matches
     BOOK_NAMES.forEach(({ id, name }) => {
         if (name.toLowerCase().startsWith(q) || id.toLowerCase().startsWith(q)) {
-            results.push({ label: name, sublabel: 'Book', value: `__book__${id}` })
+            results.push({ label: name, sublabel: 'Book', value: name })
         }
     })
 
-    // Popular verse matches
     POPULAR.forEach(v => {
         if (v.toLowerCase().includes(q)) {
             results.push({ label: v, sublabel: 'Verse', value: v })
@@ -41,10 +37,10 @@ function SuggestionRow({ label, sublabel, onSelect }) {
         <div
             onMouseDown={onSelect}
             className="flex items-center justify-between px-4 py-3 cursor-pointer
-                 text-primary dark:text-primary-dark
-                 hover:bg-elevated dark:hover:bg-elevated-dark
-                 border-b border-hairline dark:border-hairline-dark last:border-0
-                 transition-colors active:opacity-70"
+                       text-primary dark:text-primary-dark
+                       hover:bg-elevated dark:hover:bg-elevated-dark
+                       border-b border-hairline dark:border-hairline-dark last:border-0
+                       transition-colors active:opacity-70"
         >
             <span className="text-sm">{label}</span>
             <span className="text-2xs text-tertiary dark:text-tertiary-dark">{sublabel}</span>
@@ -57,11 +53,11 @@ function PopularChip({ label, onSelect }) {
         <button
             onMouseDown={onSelect}
             className="text-xs px-3 py-1.5 rounded-full transition-colors
-                 bg-elevated dark:bg-elevated-dark
-                 border border-hairline dark:border-hairline-dark
-                 text-secondary dark:text-secondary-dark
-                 hover:text-gold hover:border-gold
-                 active:opacity-70"
+                       bg-elevated dark:bg-elevated-dark
+                       border border-hairline dark:border-hairline-dark
+                       text-secondary dark:text-secondary-dark
+                       hover:text-gold hover:border-gold
+                       active:opacity-70"
         >
             {label}
         </button>
@@ -69,10 +65,7 @@ function PopularChip({ label, onSelect }) {
 }
 
 export default function SearchBar({ open, onClose }) {
-    const selectVerse = useStore(s => s.selectVerse)
-    const selectBook = useStore(s => s.selectBook)
-    const { getVerse } = useBible()
-
+    const selectFromUrl = useStore(s => s.selectFromUrl)
     const [query, setQuery] = useState('')
 
     const suggestions = buildSuggestions(query)
@@ -80,21 +73,16 @@ export default function SearchBar({ open, onClose }) {
     const submit = useCallback((raw) => {
         if (!raw) return
 
-        // Handle book selection from suggestion
-        if (raw.startsWith('__book__')) {
-            const book = raw.replace('__book__', '')
-            selectBook(book)
-            setQuery('')
-            onClose()
-            return
-        }
+        // Update URL — human readable, no internal prefixes
+        const params = new URLSearchParams()
+        params.set('q', raw)
+        window.history.pushState({}, '', `?${params.toString()}`)
 
-        const id = parseUserInput(raw)
-        if (!id) return
-        selectVerse(id, getVerse, verseIdToLabel)
+        // Reuse selectFromUrl — it parses any human readable string
+        selectFromUrl(raw)
         setQuery('')
         onClose()
-    }, [selectVerse, selectBook, getVerse, onClose])
+    }, [selectFromUrl, onClose])
 
     function handleClose() {
         setQuery('')
@@ -105,24 +93,23 @@ export default function SearchBar({ open, onClose }) {
         <BottomSheet bare open={open} onClose={handleClose}>
             <div className="p-3 flex flex-col gap-3">
 
-                {/* Input */}
                 <div className="relative">
                     <input
                         autoFocus
                         value={query}
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') submit(query) }}
-                        placeholder="Search verses, chapter or book (e.g. John 1:1, Isaiah 53, Romans)..."
+                        placeholder="John 3:16 · Romans 8 · Genesis 1:1-5 · Isaiah..."
                         className="w-full font-sans text-sm px-4 py-3 rounded-xl outline-none transition-colors
-                       bg-elevated dark:bg-elevated-dark border border-gold
-                       text-primary dark:text-primary-dark
-                       placeholder:text-secondary dark:placeholder:text-secondary-dark"
+                                   bg-elevated dark:bg-elevated-dark border border-gold
+                                   text-primary dark:text-primary-dark
+                                   placeholder:text-secondary dark:placeholder:text-secondary-dark"
                     />
                     {query && (
                         <button
                             onClick={() => setQuery('')}
                             className="absolute right-3 top-1/2 -translate-y-1/2
-                         text-tertiary dark:text-tertiary-dark active:opacity-70"
+                                       text-tertiary dark:text-tertiary-dark active:opacity-70"
                         >
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                                 <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -131,7 +118,6 @@ export default function SearchBar({ open, onClose }) {
                     )}
                 </div>
 
-                {/* Autocomplete suggestions */}
                 {query.length > 0 && suggestions.length > 0 && (
                     <div className="rounded-xl overflow-hidden border border-hairline dark:border-hairline-dark">
                         {suggestions.map((s, i) => (
@@ -145,14 +131,12 @@ export default function SearchBar({ open, onClose }) {
                     </div>
                 )}
 
-                {/* No results */}
                 {query.length > 0 && suggestions.length === 0 && (
                     <div className="text-sm text-tertiary dark:text-tertiary-dark text-center py-2">
-                        No matches. Try "John 3:16" or "Genesis 1"
+                        No matches — try "John 3:16" or "Genesis 1"
                     </div>
                 )}
 
-                {/* Empty state — popular verses */}
                 {query.length === 0 && (
                     <div className="flex flex-col gap-3">
                         <div className="text-2xs tracking-widest text-tertiary dark:text-tertiary-dark uppercase">

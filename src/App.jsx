@@ -22,10 +22,18 @@ function Inner() {
 export default function App() {
   const loaded = useStore(s => s.loaded)
   const loadData = useStore(s => s.loadData)
+  const selectFromUrl = useStore(s => s.selectFromUrl)
 
   useEffect(() => { loadData() }, [loadData])
 
-  if (!loaded) return (<SplashScreen />)
+  // Once loaded, check for deep link
+  useEffect(() => {
+    if (!loaded) return
+    const params = new URLSearchParams(window.location.search)
+    const q = params.get('q')
+    if (q) selectFromUrl(q)
+  }, [loaded, selectFromUrl])
 
+  if (!loaded) return <SplashScreen />
   return <Inner />
 }

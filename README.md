@@ -56,6 +56,21 @@ The result is a living map of how the Bible references itself — prophecy fulfi
 
 ---
 
+### Deep links
+
+Any search automatically updates the URL, making every view shareable. You can also craft links manually using the `?q=` parameter:
+
+| Link | Opens |
+|---|---|
+| `scripturegraph.com/?q=John+3:16` | John 3:16 and all its connections |
+| `scripturegraph.com/?q=Romans+8` | All connections in Romans 8 |
+| `scripturegraph.com/?q=Isaiah` | All connections across the book of Isaiah |
+| `scripturegraph.com/?q=Genesis+1:1-5` | Connections for Genesis 1:1–5 |
+
+Supported formats: `Book`, `Book Chapter`, `Book Chapter:Verse`, `Book Chapter:Verse-Verse`
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
