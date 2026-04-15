@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { deduplicateConnections } from '../utils/arcGeometry'
 import { isOT, parseUserInput } from '../data/bookMap'
+import { track } from '../utils/analytics'
 
 function dedupConns(conns) {
     const map = new Map()
@@ -69,6 +70,8 @@ export const useStore = create((set, get) => ({
     loading: false,
     threshold: 5,
     dataStats: null,
+    activeGraph: { id: 'cross-references', label: 'Cross References' },
+    activeVersion: { id: 'kjv', label: 'King James Version', short: 'KJV' },
 
     // selection
     activeVerse: null,
@@ -93,11 +96,18 @@ export const useStore = create((set, get) => ({
         worker.onerror = e => { console.error(e); set({ loading: false }) }
     },
 
-    setThreshold: value => set({ threshold: value }),
+    setThreshold: value => {
+        track('threshold_changed', { value })
+        set({ threshold: value })
+    },
 
-    clearVerse: () => set({ activeVerse: null, connections: [], centerText: null, selectedBook: null }),
+    clearVerse: () => {
+        track('selection_cleared');
+        set({ activeVerse: null, connections: [], centerText: null, selectedBook: null })
+    },
 
     selectBook: book => {
+        track('book_selected', { book })
         const conns = buildBookConns(book, get().allRefs)
         set({ selectedBook: book, activeVerse: `__book__${book}`, connections: conns, centerText: null })
     },
@@ -105,11 +115,13 @@ export const useStore = create((set, get) => ({
     deselectBook: () => set({ selectedBook: null, activeVerse: null, connections: [], centerText: null }),
 
     selectChapter: (book, chapter) => {
+        track('chapter_selected', { book, chapter })
         const conns = buildChapterConns(book, chapter, get().allRefs)
         set({ activeVerse: `__book__${book}__ch__${chapter}`, connections: conns, centerText: null, selectedBook: null })
     },
 
     selectChapterArc: chArc => {
+        track('arc_clicked', { from: chArc.fromChapter, to: chArc.toChapter })
         const conns = chArc.versePairs
             .map(v => ({ from: v.from, to: v.to, votes: v.votes }))
             .sort((a, b) => b.votes - a.votes)
@@ -129,6 +141,7 @@ export const useStore = create((set, get) => ({
         const id = parseUserInput(verseId) || verseId
         if (!id) return
 
+        track('verse_searched', { query: verseId });
         if (id.startsWith('__range__')) {
             const rangeStr = id.replace('__range__', '')
             const [fromId, toId] = rangeStr.split('-')
@@ -175,9 +188,13 @@ export const useStore = create((set, get) => ({
 
     setFocusedConn: conn => set({ focusedConn: conn }),
 
-    resetView: () => set(s => ({ resetSignal: s.resetSignal + 1 })),
+    resetView: () => {
+        track('view_reset')
+        set(s => ({ resetSignal: s.resetSignal + 1 }))
+    },
 
     toggleTheme: () => {
+        track('theme_toggled', { to: get().theme === 'dark' ? 'light' : 'dark' })
         const next = get().theme === 'dark' ? 'light' : 'dark'
         document.documentElement.classList.toggle('dark', next === 'dark')
         localStorage.setItem('theme', next)

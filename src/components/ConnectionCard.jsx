@@ -31,7 +31,7 @@ export default function ConnectionCard({ connection, isSharedSource, onVerseSele
                 <span className="text-2xs text-tertiary dark:text-tertiary-dark bg-elevated dark:bg-elevated-dark border border-subtle dark:border-subtle-dark rounded px-1.5 py-0.5">
                     {direction}
                 </span>
-                <span className="text-2xs text-placeholder dark:text-placeholder-dark">
+                <span className="text-xs text-tertiary dark:text-tertiary-dark">
                     {connection.votes} votes
                 </span>
             </div>
@@ -42,13 +42,13 @@ export default function ConnectionCard({ connection, isSharedSource, onVerseSele
                     className="mb-2.5 pb-2.5 border-b border-hairline dark:border-hairline-dark cursor-pointer hover:opacity-70 transition-opacity"
                 >
                     <div className={`text-sm mb-1 ${fromColor}`}>{fromLabel}</div>
-                    <div className="text-base text-secondary dark:text-secondary-dark leading-relaxed">{fromText || '—'}</div>
+                    <div className="text-md text-secondary dark:text-secondary-dark leading-relaxed">{fromText || '—'}</div>
                 </div>
             )}
 
             <div onClick={() => onVerseSelect(toId)} className="cursor-pointer hover:opacity-70 transition-opacity">
                 <div className={`text-sm mb-1 ${toColor}`}>{toLabel}</div>
-                <div className="text-base text-tertiary dark:text-tertiary-dark leading-relaxed">{toText || '—'}</div>
+                <div className="text-md text-tertiary dark:text-tertiary-dark leading-relaxed">{toText || '—'}</div>
             </div>
         </div>
     )

@@ -3,7 +3,6 @@ import { useStore } from '../store/store'
 import { useBible } from '../data/useBible'
 import { BOOK_MAP, isOT, verseIdToLabel, chronoSort } from '../data/bookMap'
 import ConnectionCard from './ConnectionCard'
-import StatBadge from './StatBadge'
 import EmptyState from './EmptyState'
 
 export default function InfoPanel() {
@@ -44,9 +43,6 @@ export default function InfoPanel() {
   const unique = [...dedupMap.values()]
   const sorted = [...unique].sort((a, b) => chronoSort(a.to || '', b.to || ''))
 
-  const otLinks = unique.filter(c => isOT(c.from.split('.')[0]) && isOT(c.to.split('.')[0])).length
-  const ntLinks = unique.filter(c => !isOT(c.from.split('.')[0]) && !isOT(c.to.split('.')[0])).length
-  const crossLinks = unique.filter(c => isOT(c.from.split('.')[0]) !== isOT(c.to.split('.')[0])).length
   const isSharedSrc = new Set(unique.map(c => c.from)).size <= 1
 
   function handleCardFocus(i) {
@@ -69,34 +65,36 @@ export default function InfoPanel() {
     <div className="h-full flex flex-col font-sans bg-panel dark:bg-panel-dark overflow-hidden">
 
       {/* Header — compact on mobile */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-hairline dark:border-hairline-dark shrink-0 min-h-0">
+      <div className="flex items-center gap-2 px-3 py-1 border-b border-hairline dark:border-hairline-dark shrink-0 min-h-0">
 
         {/* Title + testament badge */}
         <div className="flex items-center gap-1.5 min-w-0 shrink-1 overflow-hidden">
           <span className={`text-md font-medium truncate ${centerColor}`}>{centerLabel}</span>
-          <span className="text-2xs text-tertiary dark:text-tertiary-dark bg-elevated dark:bg-elevated-dark border border-subtle dark:border-subtle-dark rounded px-1 py-0.5 shrink-0">
+          <span className="text-sm text-tertiary dark:text-tertiary-dark bg-elevated dark:bg-elevated-dark border border-subtle dark:border-subtle-dark rounded px-1 py-0.5 shrink-0">
             {testament}
           </span>
         </div>
 
-        {/* Stats — compact, scroll horizontally if needed */}
-        <div className="flex gap-3 items-center shrink-0 ml-auto">
-          <StatBadge label="total" value={unique.length} color="#d4a843" compact />
-          <StatBadge label="OT→OT" value={otLinks} color="#7ab8f5" compact />
-          <StatBadge label="NT→NT" value={ntLinks} color="#7dd4a0" compact />
-          <StatBadge label="cross" value={crossLinks} color="#d4a843" compact />
-        </div>
-
+        <div className="flex-1" />
         <button
           onClick={clearVerse}
-          className="text-xl leading-none pl-2 text-tertiary dark:text-tertiary-dark hover:text-primary dark:hover:text-primary-dark transition-colors shrink-0"
-        >×</button>
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center
+             rounded-full transition-colors active:opacity-70 shrink-0
+             text-tertiary dark:text-tertiary-dark
+             hover:bg-elevated dark:hover:bg-elevated-dark
+             hover:text-primary dark:hover:text-primary-dark"
+          title="Clear selection"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
       </div>
 
       {/* Verse text — collapsed on mobile, max 2 lines */}
       {text && (
         <div className="px-3 py-2 border-b border-hairline dark:border-hairline-dark shrink-0">
-          <div className="text-xs text-tertiary dark:text-tertiary-dark leading-relaxed line-clamp-2">
+          <div className="text-md text-tertiary dark:text-tertiary-dark leading-relaxed line-clamp-3">
             &ldquo;{text}&rdquo;
           </div>
         </div>

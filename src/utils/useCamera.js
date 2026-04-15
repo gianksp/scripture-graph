@@ -68,6 +68,7 @@ export function useCamera(scheduleDraw, resetSignal) {
     }
     if (e.touches.length === 2) {
       isDragging.current = false
+      lastDragPos.current = { x: 0, y: 0 }  // reset so pan doesn't jump
       pinchDist.current = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -78,15 +79,28 @@ export function useCamera(scheduleDraw, resetSignal) {
   const onTouchMove = useCallback(e => {
     e.preventDefault()
     if (e.touches.length === 2) {
-      const d = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      )
+      const t0 = e.touches[0], t1 = e.touches[1]
+      const d = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY)
+
+      // Midpoint of two fingers
+      const midX = (t0.clientX + t1.clientX) / 2
+      const midY = (t0.clientY + t1.clientY) / 2
+
       if (pinchDist.current !== null) {
+        // Zoom from pinch distance change
         scaleZ.current = Math.max(0.3, Math.min(5, scaleZ.current + (d - pinchDist.current) * 0.006))
-        bump(); scheduleDraw()
+
+        // Pan from midpoint movement
+        if (lastDragPos.current.x !== 0) {
+          panX.current += midX - lastDragPos.current.x
+          panY.current += midY - lastDragPos.current.y
+        }
       }
+
       pinchDist.current = d
+      lastDragPos.current = { x: midX, y: midY }
+      bump(); scheduleDraw()
+
     } else if (e.touches.length === 1 && isDragging.current) {
       const dx = e.touches[0].clientX - lastDragPos.current.x
       const dy = e.touches[0].clientY - lastDragPos.current.y
@@ -100,7 +114,7 @@ export function useCamera(scheduleDraw, resetSignal) {
       }
       bump(); scheduleDraw()
     }
-  }, [])
+  }, [bump, scheduleDraw])
 
   const onTouchEnd = useCallback(() => {
     isDragging.current = false

@@ -5,16 +5,16 @@ import SourceDropdown, { BookIcon } from './SourceDropdown'
 import { PillButton } from './PillButton'
 import { IconButton } from './IconButton'
 import SearchBar from './SearchBar'
-
-const GRAPH_TYPES = [{ id: 'cross-references', label: 'Cross References' }]
-const BIBLE_VERSIONS = [{ id: 'kjv', label: 'King James Version', short: 'KJV' }]
+import { useStore } from '../../store/store'
 
 export default function Header() {
   const [showGraphSheet, setShowGraphSheet] = useState(false)
   const [showVersionSheet, setShowVersionSheet] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
-  const [activeGraph, setActiveGraph] = useState(GRAPH_TYPES[0])
-  const [activeVersion, setActiveVersion] = useState(BIBLE_VERSIONS[0])
+  const activeGraph = useStore(s => s.activeGraph)
+  const activeVersion = useStore(s => s.activeVersion)
+  const setActiveGraph = useStore(s => s.setActiveGraph)
+  const setActiveVersion = useStore(s => s.setActiveVersion)
 
   return (
     <div className="relative shrink-0">

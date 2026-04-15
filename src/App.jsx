@@ -4,14 +4,16 @@ import Header from './components/navigation/Header'
 import ArcCanvas from './components/canvas/ArcCanvas'
 import InfoPanel from './components/InfoPanel'
 import { SplashScreen } from './components/SplashScreen'
+import InfoBar from './components/InfoBar'
 
 function Inner() {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden font-sans bg-canvas dark:bg-canvas-dark">
       <Header />
-      <div className="relative" style={{ flex: '0 0 50%', minHeight: 0 }}>
+      <div className="relative" style={{ flex: '0 0 45%', minHeight: 0 }}>
         <ArcCanvas />
       </div>
+      <InfoBar />
       <div
         className="overflow-hidden border-t border-hairline dark:border-hairline-dark"
         style={{ flex: '1 1 0%', minHeight: 0 }}
