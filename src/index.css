@@ -40,3 +40,39 @@ body {
     background: #1e1e1e;
     border-radius: 2px;
 }
+
+@keyframes scanning {
+    0% {
+        transform: translateX(-100%);
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(400%);
+        opacity: 0;
+    }
+}
+
+.rendering-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    overflow: hidden;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.rendering-bar::after {
+    content: '';
+    display: block;
+    width: 25%;
+    height: 100%;
+    background: #d4a843;
+    animation: scanning 0.8s ease-in-out forwards;
+}

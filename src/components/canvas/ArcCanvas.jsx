@@ -11,6 +11,7 @@ import {
     buildChapterCornerCache, pointInCachedPolygon,
     buildArcSampleCache, hitTestArcSamples,
 } from '../../utils/geometryCache'
+import Loader from './Loader'
 
 function positionTooltip(tipEl, clientX, clientY) {
     const tipWidth = Math.min(460, window.innerWidth - 16)
@@ -60,6 +61,8 @@ export default function ArcCanvas() {
     const deselectBook = useStore(s => s.deselectBook)
     const selectChapter = useStore(s => s.selectChapter)
     const selectChArc = useStore(s => s.selectChapterArc)
+    const rendering = useStore(s => s.rendering)
+    const setRendering = useStore(s => s.setRendering)
 
     const { getVerse } = useBible()
 
@@ -110,9 +113,17 @@ export default function ArcCanvas() {
     useEffect(() => { renderFrameRef.current = renderFrame }, [renderFrame])
 
     useEffect(() => {
-        allChapterArcsRef.current = groupRefsByChapterPair(filteredRefs)
-        cacheVerRef.current = -1
-        scheduleDraw()
+        hoveredArcRef.current = null
+        hideArcTooltip()
+        setRendering(true)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                allChapterArcsRef.current = groupRefsByChapterPair(filteredRefs)
+                cacheVerRef.current = -1
+                scheduleDraw()
+                setRendering(false)
+            })
+        })
     }, [filteredRefs])
 
     useEffect(() => {
@@ -124,10 +135,18 @@ export default function ArcCanvas() {
     }, [camera])
 
     useEffect(() => {
-        selChapterArcsRef.current = groupRefsByChapterPair(connections)
-        cacheVerRef.current = -1
-        scheduleDraw()
-    }, [connections])
+        hoveredArcRef.current = null
+        hideArcTooltip()
+        setRendering(true)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                selChapterArcsRef.current = groupRefsByChapterPair(connections)
+                cacheVerRef.current = -1
+                scheduleDraw()
+                setRendering(false)
+            })
+        })
+    }, [connections, activeVerse, selectedBook])
 
     useEffect(() => { scheduleDraw() }, [focusedConn, activeVerse, selectedBook])
 
@@ -185,10 +204,24 @@ export default function ArcCanvas() {
     }, [])
 
     const detectBookHover = useCallback((mx, my) => {
-        let best = null, bestD = 36
+        let best = null, bestD = Infinity
+        const boxHHalf = 10  // half of thin axis (fontSize + pad)
+        const boxWHalf = 80  // half of long axis (maxLabelWidth + pad)
+
         for (const [book, pos] of Object.entries(labelPosRef.current)) {
-            const d = Math.sqrt((pos.sx - mx) ** 2 + (pos.sy - my) ** 2)
-            if (d < bestD) { bestD = d; best = book }
+            // Transform mouse into label's local space (label is rotated -90deg)
+            const dx = mx - pos.sx
+            const dy = my - pos.sy
+
+            // Rotate mouse by +90deg to undo the label's -90deg rotation
+            const localX = dy   // rotated +90: x' = y
+            const localY = -dx   // rotated +90: y' = -x
+
+            // Check if inside the unrotated rectangle
+            if (Math.abs(localX) < boxWHalf && Math.abs(localY) < boxHHalf) {
+                const d = Math.sqrt(dx * dx + dy * dy)
+                if (d < bestD) { bestD = d; best = book }
+            }
         }
         return best
     }, [])
@@ -200,12 +233,34 @@ export default function ArcCanvas() {
         const mx = e.clientX - rect.left, my = e.clientY - rect.top
         const hasSel = !!(activeVerse || selectedBook)
 
+        // 1. Chapter square — highest priority
         const hovCh = detectChapterHover(mx, my)
         if (hovCh !== hoveredChapterKeyRef.current) {
             hoveredChapterKeyRef.current = hovCh
             scheduleDraw()
         }
 
+        // 2. Book label — second priority, blocks arc
+        const hovBook = detectBookHover(mx, my)
+        if (hovBook !== hoveredBookRef.current) {
+            hoveredBookRef.current = hovBook
+            hovBook ? showBookTooltip(hovBook) : hideBookTooltip()
+            scheduleDraw()
+        } else if (hovBook) {
+            showBookTooltip(hovBook)
+        }
+
+        // If over a book, clear arc hover and hide arc tooltip
+        if (hovBook) {
+            if (hoveredArcRef.current) {
+                hoveredArcRef.current = null
+                scheduleDraw()
+            }
+            hideArcTooltip()
+            return
+        }
+
+        // 3. Arc — only when not over chapter or book
         const arcHit = hovCh ? null : detectArcHover(mx, my, hasSel)
         if (arcHit?.chArc !== hoveredArcRef.current?.chArc) {
             hoveredArcRef.current = arcHit
@@ -214,15 +269,6 @@ export default function ArcCanvas() {
             else hideArcTooltip()
         } else if (arcHit) {
             positionTooltip(arcTipRef.current, e.clientX, e.clientY)
-        }
-
-        const hovBook = detectBookHover(mx, my)
-        if (hovBook !== hoveredBookRef.current) {
-            hoveredBookRef.current = hovBook
-            hovBook ? showBookTooltip(hovBook) : hideBookTooltip()
-            scheduleDraw()
-        } else if (hovBook) {
-            showBookTooltip(hovBook)
         }
     }, [camera, activeVerse, selectedBook,
         detectChapterHover, detectArcHover, detectBookHover,
@@ -252,35 +298,56 @@ export default function ArcCanvas() {
         const rect = canvas.getBoundingClientRect()
         const mx = e.clientX - rect.left, my = e.clientY - rect.top
 
-        if (hoveredArcRef.current?.chArc) { selectChArc(hoveredArcRef.current.chArc); return }
+        // Arc click
+        if (hoveredArcRef.current?.chArc) {
+            selectChArc(hoveredArcRef.current.chArc)
+            return
+        }
 
+        // Chapter square click (3D mode)
         if (camera.is3D()) {
             const { meta } = cornerCacheRef.current
             for (let i = 0; i < meta.length; i++) {
                 const m = meta[i]
                 const ss = m.size * camera.getScale(canvas.width)
                 if (Math.abs(m.sx - mx) < ss && Math.abs(m.sy - my) < ss) {
-                    selectChapter(m.book, m.ch); return
+                    selectChapter(m.book, m.ch)
+                    return
                 }
             }
         }
 
+        // Book label click — rotated rectangle hit test matching drawBookLabel rotation
         let closestBook = null, closestDist = Infinity
+        const boxHHalf = 10
+        const boxWHalf = 80
+
         for (const [book, pos] of Object.entries(labelPosRef.current)) {
-            const d = Math.sqrt((pos.sx - mx) ** 2 + (pos.sy - my) ** 2)
-            if (d < closestDist) { closestDist = d; closestBook = book }
-        }
-        const threshold = Math.max((canvas.width / BOOK_ORDER.length) * 0.6, 44)
-        if (closestBook && closestDist < threshold) {
-            selectedBook === closestBook ? deselectBook() : selectBook(closestBook)
-            scheduleDraw(); return
+            const dx = mx - pos.sx
+            const dy = my - pos.sy
+            // Undo the -90deg rotation applied to labels
+            const localX = dy
+            const localY = -dx
+            if (Math.abs(localX) < boxWHalf && Math.abs(localY) < boxHHalf) {
+                const d = Math.sqrt(dx * dx + dy * dy)
+                if (d < closestDist) { closestDist = d; closestBook = book }
+            }
         }
 
-        deselectBook(); scheduleDraw()
+        if (closestBook) {
+            selectedBook === closestBook ? deselectBook() : selectBook(closestBook)
+            scheduleDraw()
+            return
+        }
+
+        // Empty click — clear
+        deselectBook()
+        scheduleDraw()
     }, [camera, selectedBook, selectBook, deselectBook, selectChapter, selectChArc, scheduleDraw])
 
     return (
         <div ref={containerRef} className="relative w-full h-full bg-canvas dark:bg-canvas-dark">
+            <Loader visible={rendering} />
             <canvas
                 ref={canvasRef}
                 style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'crosshair' }}

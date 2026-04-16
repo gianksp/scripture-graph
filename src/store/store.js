@@ -84,6 +84,10 @@ export const useStore = create((set, get) => ({
     // camera reset signal
     resetSignal: 0,
 
+    rendering: false,
+
+    setRendering: v => set({ rendering: v }),
+
     loadData: async () => {
         if (get().loaded || get().loading) return
         set({ loading: true })

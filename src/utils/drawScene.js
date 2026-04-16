@@ -1,8 +1,18 @@
 import { project3D } from './project'
-import { BOOK_ORDER, BOOK_MAP, isOT, arcColor, ABBREV } from '../data/bookMap'
+import { BOOK_ORDER, BOOK_MAP, isOT, arcColor } from '../data/bookMap'
 import { computeArcEndpoints, verseToScreenPos } from './arcGeometry'
 
-const STRIP_HEIGHT = 40
+let _maxLabelWidth = 0
+let _labelFont = ''
+
+function getMaxLabelWidth(ctx, fontSize) {
+    const font = `${fontSize}px IBM Plex Mono`
+    if (_labelFont === font && _maxLabelWidth > 0) return _maxLabelWidth
+    ctx.font = font
+    _maxLabelWidth = Math.max(...BOOK_ORDER.map(b => ctx.measureText(BOOK_MAP[b] || b).width))
+    _labelFont = font
+    return _maxLabelWidth
+}
 
 function drawWorldSquare(ctx, xn, z, size, camera, W, H) {
     const { rotY, rotX, getScale, getOrigin, getBaseY } = camera
@@ -73,7 +83,9 @@ function drawChapterSquare(ctx, d, isActive, isBookHovered, isChapterHovered, ca
 
     const screenSize = size * camera.getScale(W)
     if (screenSize > 8) {
-        ctx.fillStyle = isActive || isChapterHovered ? color : (ot ? 'rgba(122,184,245,0.6)' : 'rgba(125,212,160,0.6)')
+        ctx.fillStyle = isActive || isChapterHovered
+            ? color
+            : (ot ? 'rgba(122,184,245,0.6)' : 'rgba(125,212,160,0.6)')
         ctx.font = `${Math.max(7, Math.min(10, screenSize * 0.5))}px IBM Plex Mono`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -83,45 +95,46 @@ function drawChapterSquare(ctx, d, isActive, isBookHovered, isChapterHovered, ca
     ctx.globalAlpha = 1
 }
 
-function drawBookLabel(ctx, d, hasSelection, hoveredBook, hoveredChapterKey, W) {
+function drawBookLabel(ctx, d, hasSelection, hoveredBook, hoveredChapterKey, W, maxLabelWidth, fontSize) {
     const { book, ot, isSel, sx, sy } = d
     const isHov = hoveredBook === book || hoveredChapterKey?.startsWith(book + '.')
     const isDimmed = hasSelection && !isSel && !isHov
-    const label = book.slice(0, 3)
 
-    ctx.globalAlpha = isDimmed ? 0.75 : 1
-    ctx.font = (isSel || isHov) ? 'bold 11px IBM Plex Mono' : '10px IBM Plex Mono'
-    const tw = ctx.measureText(label).width
-    const tx = Math.min(Math.max(sx, 60), W - 60)
+    const fullName = BOOK_MAP[book] || book
+    const color = (isSel || isHov)
+        ? (ot ? '#7ab8f5' : '#7dd4a0')
+        : (ot ? 'rgba(122,184,245,0.75)' : 'rgba(125,212,160,0.75)')
+
+    const labelY = sy
+    const pad = 4
+    const boxH = fontSize + pad * 2
+    const boxW = maxLabelWidth + pad * 2
+
+    ctx.save()
+    ctx.globalAlpha = isDimmed ? 0.85 : 1
+    ctx.translate(sx, labelY)
+    ctx.rotate(-Math.PI / 2)
+
+    ctx.font = `${isSel || isHov ? 'bold ' : ''}${fontSize}px IBM Plex Mono`
 
     ctx.fillStyle = (isSel || isHov)
-        ? (ot ? 'rgba(122,184,245,0.15)' : 'rgba(125,212,160,0.15)')
-        : 'rgba(8,8,8,0.85)'
-    ctx.beginPath()
-    ctx.roundRect(tx - tw / 2 - 8, sy - 16, tw + 16, 22, 4)
-    ctx.fill()
-
+        ? (ot ? 'rgba(122,184,245,0.12)' : 'rgba(125,212,160,0.12)')
+        : 'rgba(8,8,8,0.7)'
     ctx.strokeStyle = (isSel || isHov)
         ? (ot ? 'rgba(122,184,245,0.5)' : 'rgba(125,212,160,0.5)')
-        : (ot ? 'rgba(122,184,245,0.2)' : 'rgba(125,212,160,0.2)')
+        : (ot ? 'rgba(122,184,245,0.15)' : 'rgba(125,212,160,0.15)')
     ctx.lineWidth = 1
+    // ctx.beginPath()
+    // ctx.roundRect(-boxW, -boxH / 2, boxW, boxH, 3)
+    ctx.fill()
     ctx.stroke()
 
-    const lc = (isSel || isHov)
-        ? (ot ? '#7ab8f5' : '#7dd4a0')
-        : (ot ? 'rgba(122,184,245,0.85)' : 'rgba(125,212,160,0.85)')
-    ctx.fillStyle = lc
-    ctx.textAlign = 'center'
-    ctx.fillText(label, tx, sy - 2)
+    ctx.fillStyle = color
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(fullName, -pad, 0)
 
-    ctx.beginPath()
-    ctx.strokeStyle = lc
-    ctx.globalAlpha = (isSel || isHov) ? 0.7 : 0.25
-    ctx.lineWidth = 1
-    ctx.moveTo(tx - tw / 2, sy)
-    ctx.lineTo(tx + tw / 2, sy)
-    ctx.stroke()
-    ctx.globalAlpha = 1
+    ctx.restore()
 }
 
 export function drawScene({
@@ -130,13 +143,14 @@ export function drawScene({
     activeVerse, connections, selectedBook,
     hoveredBook, hoveredArc, hoveredChapterKey,
     chapterArcs, chapterArcsSelected,
-    focusedConn,           // ← add this
+    focusedConn,
 }) {
     const { rotY, rotX, getScale, getOrigin, getBaseY, is3D } = camera
     const baseY = getBaseY(canvasH)
     const scale0 = getScale(canvasW)
     const { ox } = getOrigin(canvasW, canvasH)
     const show3D = is3D()
+
     const isChMode = activeVerse?.includes('__ch__')
     const isBookMode = activeVerse?.startsWith('__book__') && !isChMode
     const bookCode = activeVerse?.startsWith('__book__')
@@ -145,7 +159,7 @@ export function drawScene({
 
     ctx.clearRect(0, 0, canvasW, canvasH)
 
-    // ── Book bands ────────────────────────────────────────────
+    // ── Book bands ─────────────────────────────────────────────
     BOOK_ORDER.forEach((book, idx) => {
         const r = bookRanges.current[book]; if (!r) return
         const sx = ox + r.startXn * scale0
@@ -156,26 +170,26 @@ export function drawScene({
         }
     })
 
-    // ── Baseline ──────────────────────────────────────────────
-    ctx.beginPath(); ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 1
-    ctx.moveTo(0, baseY); ctx.lineTo(canvasW, baseY); ctx.stroke()
+    // ── Baseline ───────────────────────────────────────────────
+    // ctx.beginPath(); ctx.strokeStyle = '#1e1e1e'; ctx.lineWidth = 1
+    // ctx.moveTo(0, baseY); ctx.lineTo(canvasW, baseY); ctx.stroke()
 
-    // ── OT/NT divider ─────────────────────────────────────────
-    const malR = bookRanges.current['Mal']
-    const mattR = bookRanges.current['Matt']
-    if (malR && mattR) {
-        const dx = (ox + malR.endXn * scale0 + ox + mattR.startXn * scale0) / 2
-        ctx.save()
-        ctx.strokeStyle = 'rgba(212,168,67,0.1)'; ctx.lineWidth = 1
-        ctx.setLineDash([3, 6])
-        ctx.beginPath(); ctx.moveTo(dx, 0); ctx.lineTo(dx, baseY); ctx.stroke()
-        ctx.setLineDash([])
-        ctx.fillStyle = 'rgba(212,168,67,0.3)'; ctx.font = '8px IBM Plex Mono'
-        ctx.textAlign = 'center'; ctx.fillText('OT·NT', dx, baseY + 26)
-        ctx.restore()
-    }
+    // // ── OT/NT divider ──────────────────────────────────────────
+    // const malR = bookRanges.current['Mal']
+    // const mattR = bookRanges.current['Matt']
+    // if (malR && mattR) {
+    //     const dx = (ox + malR.endXn * scale0 + ox + mattR.startXn * scale0) / 2
+    //     ctx.save()
+    //     ctx.strokeStyle = 'rgba(212,168,67,0.1)'; ctx.lineWidth = 1
+    //     ctx.setLineDash([3, 6])
+    //     ctx.beginPath(); ctx.moveTo(dx, 0); ctx.lineTo(dx, baseY); ctx.stroke()
+    //     ctx.setLineDash([])
+    //     ctx.fillStyle = 'rgba(212,168,67,0.3)'; ctx.font = '8px IBM Plex Mono'
+    //     ctx.textAlign = 'center'; ctx.fillText('OT·NT', dx, baseY + 26)
+    //     ctx.restore()
+    // }
 
-    // ── Active chapter keys (from connections) ────────────────
+    // ── Active chapter keys ────────────────────────────────────
     const activeChKeys = new Set()
     if (hasSel) {
         connections.forEach(c => {
@@ -187,7 +201,14 @@ export function drawScene({
         })
     }
 
-    // ── Build drawables ───────────────────────────────────────
+    // ── Max label width — before BOOK_ORDER.forEach ────────────
+    const baseFontSize = canvasW < 500 ? 7 : canvasW < 800 ? 9 : 16
+    const fontSize = Math.max(6, Math.min(16, Math.floor(baseFontSize * camera.scaleZ.current)))
+    const maxLabelWidth = getMaxLabelWidth(ctx, fontSize)
+    const pad = 4
+    const boxW = maxLabelWidth + pad * 2
+
+    // ── Build drawables ────────────────────────────────────────
     const drawables = []
     const labelPositions = {}
 
@@ -207,10 +228,10 @@ export function drawScene({
 
         const scale = getScale(canvasW)
         const { ox: ox2 } = getOrigin(canvasW, canvasH)
-        // Book label position
-        const lp = project3D(bookRanges.current[book]?.midXn || 0, -0.027, 0, rotY.current, rotX.current, scale, ox2, baseY)
+        const lp = project3D(bookRanges.current[book]?.midXn || 0, 0, 0, rotY.current, rotX.current, scale, ox2, baseY)
+
         drawables.push({ type: 'label', book, ot, isSel, sx: lp.sx, sy: lp.sy, depth: lp.depth })
-        labelPositions[book] = { sx: lp.sx, sy: lp.sy }
+        labelPositions[book] = { sx: lp.sx, sy: lp.sy - boxW / 2 }
     })
 
     const chapters = drawables.filter(d => d.type === 'chapter').sort((a, b) => a.depth - b.depth)
@@ -223,19 +244,21 @@ export function drawScene({
         drawChapterSquare(ctx, d, isActive, isBookHov, isChHov, camera, canvasW, canvasH)
     })
 
-    labels.forEach(d => drawBookLabel(ctx, d, hasSel, hoveredBook, hoveredChapterKey, canvasW))
+    labels.forEach(d => drawBookLabel(ctx, d, hasSel, hoveredBook, hoveredChapterKey, canvasW, maxLabelWidth, fontSize))
 
-    // ── Arcs ──────────────────────────────────────────────────
+    // ── Arcs ───────────────────────────────────────────────────
     const arcs = hasSel ? chapterArcsSelected : chapterArcs
-    const maxV = arcs.reduce((m, a) => a.totalVotes > m ? a.totalVotes : m, 1)
-    arcs.forEach(chArc => drawChapterArc(
-        ctx, chArc,
-        isArcHovered(chArc, hoveredArc),
-        isArcFocused(chArc, focusedConn),
-        maxV, versePositions, chapterData, bookRanges, camera, canvasW, canvasH, hasSel
-    ))
+    if (!hasSel || arcs.length > 0) {
+        const maxV = arcs.reduce((m, a) => a.totalVotes > m ? a.totalVotes : m, 1)
+        arcs.forEach(chArc => drawChapterArc(
+            ctx, chArc,
+            isArcHovered(chArc, hoveredArc),
+            isArcFocused(chArc, focusedConn),
+            maxV, versePositions, chapterData, bookRanges, camera, canvasW, canvasH, hasSel
+        ))
+    }
 
-    // ── Active verse dot ──────────────────────────────────────
+    // ── Active verse dot ───────────────────────────────────────
     if (activeVerse && !isBookMode && !isChMode) {
         const s = verseToScreenPos(activeVerse, versePositions, chapterData, bookRanges, camera, canvasW, canvasH)
         const ot = isOT(activeVerse.split('.')[0])

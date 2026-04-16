@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from 'react'
 
-const STRIP_HEIGHT = 80
+const STRIP_HEIGHT = 120
 
 export function useCamera(scheduleDraw, resetSignal) {
   const rotY = useRef(0)
