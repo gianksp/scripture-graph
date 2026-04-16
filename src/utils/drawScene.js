@@ -227,7 +227,7 @@ export function drawScene({
 
     // ── Arcs ──────────────────────────────────────────────────
     const arcs = hasSel ? chapterArcsSelected : chapterArcs
-    const maxV = Math.max(...arcs.map(a => a.totalVotes), 1)
+    const maxV = arcs.reduce((m, a) => a.totalVotes > m ? a.totalVotes : m, 1)
     arcs.forEach(chArc => drawChapterArc(
         ctx, chArc,
         isArcHovered(chArc, hoveredArc),

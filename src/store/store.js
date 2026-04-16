@@ -68,7 +68,7 @@ export const useStore = create((set, get) => ({
     bibleLookup: {},
     loaded: false,
     loading: false,
-    threshold: 5,
+    threshold: 1,
     dataStats: null,
     activeGraph: { id: 'cross-references', label: 'Cross References' },
     activeVersion: { id: 'kjv', label: 'King James Version', short: 'KJV' },

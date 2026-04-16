@@ -30,7 +30,7 @@ export default function SourceDropdown({ open, active, onSelect, onClose }) {
                 />
             ))}
             <div className="px-5 py-4 border-t border-hairline dark:border-hairline-dark">
-                <p className="text-sm text-tertiary dark:text-tertiary-dark">More translations coming soon</p>
+                <p className="text-sm text-ghost dark:text-ghost-dark">More translations coming soon</p>
             </div>
         </BottomSheet>
     )
